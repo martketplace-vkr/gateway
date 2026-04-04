@@ -6,6 +6,7 @@ require (
 	github.com/gofiber/fiber/v2 v2.52.12
 	github.com/martketplace-vkr/auth v0.0.0
 	github.com/martketplace-vkr/catalog v0.0.0
+	github.com/martketplace-vkr/order v0.0.0
 	github.com/martketplace-vkr/pkg v0.0.1
 	github.com/martketplace-vkr/user v0.0.0
 	github.com/prometheus/client_golang v1.23.2
@@ -102,6 +103,8 @@ require (
 replace github.com/martketplace-vkr/auth => ../auth
 
 replace github.com/martketplace-vkr/catalog => ../catalog
+
+replace github.com/martketplace-vkr/order => ../order
 
 replace github.com/martketplace-vkr/user => ../user
 

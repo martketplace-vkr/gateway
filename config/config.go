@@ -17,5 +17,6 @@ type Config struct {
 	ServerCmp serverCmp.Config `validate:"required"`
 	Auth      GRPCClient       `validate:"required"`
 	Catalog   GRPCClient       `validate:"required"`
+	Order     GRPCClient       `validate:"required"`
 	User      GRPCClient       `validate:"required"`
 }

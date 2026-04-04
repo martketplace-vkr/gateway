@@ -7,8 +7,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	catalogclient "github.com/martketplace-vkr/catalog/pkg/api/grpc/v1/client"
 	"github.com/martketplace-vkr/gateway/internal/common/httpx"
-	"github.com/martketplace-vkr/gateway/internal/common/middleware"
-	"github.com/martketplace-vkr/gateway/internal/services/catalog/models"
 )
 
 type Handler struct {
@@ -111,103 +109,11 @@ func (h *Handler) GetProduct(c *fiber.Ctx) error {
 }
 
 func (h *Handler) CreateProduct(c *fiber.Ctx) error {
-	user, err := middleware.CurrentUser(c)
-	if err != nil {
-		return err
-	}
-
-	req := models.CreateProductRequest{}
-	if err := c.BodyParser(&req); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
-	}
-
-	ctx, cancel := httpx.RPCContext(c, h.timeout)
-	defer cancel()
-
-	resp, err := h.catalogClient.CreateProduct(ctx, &catalogclient.CreateProductRequest{
-		VendorId:    user.ID,
-		CategoryId:  req.CategoryID,
-		Name:        req.Name,
-		Description: req.Description,
-		Price:       req.Price,
-		StockCount:  req.StockCount,
-		Attributes:  toProductAttributeInputs(req.Attributes),
-		Images:      toProductImageInputs(req.Images),
-	})
-	if err != nil {
-		return httpx.MapGRPCError(err)
-	}
-
-	return httpx.WriteProtoJSON(c, resp)
+	return fiber.NewError(fiber.StatusNotImplemented, "product mutations are not supported by catalog client service")
 }
 
 func (h *Handler) UpdateProduct(c *fiber.Ctx) error {
-	user, err := middleware.CurrentUser(c)
-	if err != nil {
-		return err
-	}
-
-	productID, err := strconv.ParseInt(c.Params("product_id"), 10, 64)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid product_id")
-	}
-
-	req := models.UpdateProductRequest{}
-	if err := c.BodyParser(&req); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
-	}
-
-	ctx, cancel := httpx.RPCContext(c, h.timeout)
-	defer cancel()
-
-	resp, err := h.catalogClient.UpdateProduct(ctx, &catalogclient.UpdateProductRequest{
-		ProductId:   productID,
-		VendorId:    user.ID,
-		CategoryId:  req.CategoryID,
-		Name:        req.Name,
-		Description: req.Description,
-		Price:       req.Price,
-		StockCount:  req.StockCount,
-		Attributes:  toProductAttributeInputs(req.Attributes),
-		Images:      toProductImageInputs(req.Images),
-	})
-	if err != nil {
-		return httpx.MapGRPCError(err)
-	}
-
-	return httpx.WriteProtoJSON(c, resp)
-}
-
-func toProductAttributeInputs(attributes []models.ProductAttributeInput) []*catalogclient.ProductAttributeInput {
-	if len(attributes) == 0 {
-		return nil
-	}
-
-	result := make([]*catalogclient.ProductAttributeInput, 0, len(attributes))
-	for _, attribute := range attributes {
-		result = append(result, &catalogclient.ProductAttributeInput{
-			Name:  attribute.Name,
-			Value: attribute.Value,
-		})
-	}
-
-	return result
-}
-
-func toProductImageInputs(images []models.ProductImageInput) []*catalogclient.ProductImageInput {
-	if len(images) == 0 {
-		return nil
-	}
-
-	result := make([]*catalogclient.ProductImageInput, 0, len(images))
-	for _, image := range images {
-		result = append(result, &catalogclient.ProductImageInput{
-			Url:    image.URL,
-			IsMain: image.IsMain,
-		})
-	}
-
-	return result
+	return fiber.NewError(fiber.StatusNotImplemented, "product mutations are not supported by catalog client service")
 }
 
 func parseOptionalInt64Query(c *fiber.Ctx, key string) (int64, bool, error) {

@@ -5,6 +5,7 @@ import (
 
 	authclient "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/client"
 	catalogclient "github.com/martketplace-vkr/catalog/pkg/api/grpc/v1/client"
+	orderclient "github.com/martketplace-vkr/order/pkg/api/grpc/v1/client"
 	userclient "github.com/martketplace-vkr/user/pkg/api/grpc/v1/client"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/martketplace-vkr/gateway/internal/common/middleware"
 	authv1 "github.com/martketplace-vkr/gateway/internal/services/auth/delivery/http/api/v1"
 	catalogv1 "github.com/martketplace-vkr/gateway/internal/services/catalog/delivery/http/api/v1"
+	orderv1 "github.com/martketplace-vkr/gateway/internal/services/order/delivery/http/api/v1"
 	userv1 "github.com/martketplace-vkr/gateway/internal/services/user/delivery/http/api/v1"
 	"github.com/martketplace-vkr/gateway/pkg/routes"
 
@@ -37,6 +39,12 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	}
 	defer catalogConn.Close()
 
+	orderConn, err := dialGRPC(ctx, cfg.Order)
+	if err != nil {
+		return err
+	}
+	defer orderConn.Close()
+
 	userConn, err := dialGRPC(ctx, cfg.User)
 	if err != nil {
 		return err
@@ -45,6 +53,7 @@ func Run(ctx context.Context, cfg *config.Config) error {
 
 	authCli := authclient.NewAuthClientServiceClient(authConn)
 	catalogCli := catalogclient.NewCatalogClientServiceClient(catalogConn)
+	orderCli := orderclient.NewOrderClientServiceClient(orderConn)
 	userCli := userclient.NewUserClientServiceClient(userConn)
 
 	authMiddleware := middleware.NewAuth(authCli, cfg.Auth.Timeout.Duration)
@@ -58,6 +67,11 @@ func Run(ctx context.Context, cfg *config.Config) error {
 		authMiddleware,
 		catalogv1.New(catalogCli, cfg.Catalog.Timeout.Duration),
 	)
+	orderBinder := orderv1.NewBinder(
+		server,
+		authMiddleware,
+		orderv1.New(orderCli, cfg.Order.Timeout.Duration),
+	)
 	userBinder := userv1.NewBinder(
 		server,
 		authMiddleware,
@@ -67,6 +81,7 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	binder := routes.NewBinder(
 		authBinder,
 		catalogBinder,
+		orderBinder,
 		userBinder,
 	)
 
