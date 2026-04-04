@@ -9,7 +9,7 @@ jobs:
   deploy:
     uses: martketplace-vkr/ci-template/.github/workflows/deploy-service.yml@release
     with:
-      service_name: catalog
+      service_name: gateway
       namespace: martketplace-vkr
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
