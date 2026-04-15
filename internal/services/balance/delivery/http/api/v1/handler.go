@@ -53,6 +53,25 @@ func (h *Handler) GetWallet(c *fiber.Ctx) error {
 	return httpx.WriteProtoJSON(c, resp)
 }
 
+func (h *Handler) GetDepositAddressList(c *fiber.Ctx) error {
+	user, err := middleware.CurrentUser(c)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	resp, err := h.balanceClient.GetDepositAddressList(ctx, &balanceclient.GetDepositAddressListRequest{
+		UserId: user.ID,
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	return httpx.WriteProtoJSON(c, resp)
+}
+
 func (h *Handler) GetWalletTransactions(c *fiber.Ctx) error {
 	user, err := middleware.CurrentUser(c)
 	if err != nil {

@@ -33,6 +33,7 @@ func (b *Binder) bind(router fiber.Router) {
 	balance := router.Group("/balance", b.auth.Require(roles.Client))
 
 	balance.Get("/wallet", b.handler.GetWallet)
+	balance.Get("/deposit-addresses", b.handler.GetDepositAddressList)
 	balance.Get("/transactions", b.handler.GetWalletTransactions)
 	balance.Post("/top-ups", b.handler.CreateTopUp)
 	balance.Post("/top-ups/crypto", b.handler.CreateCryptoTopUp)
