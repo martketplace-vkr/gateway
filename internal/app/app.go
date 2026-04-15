@@ -4,6 +4,7 @@ import (
 	"context"
 
 	authclient "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/client"
+	balanceclient "github.com/martketplace-vkr/balance/pkg/api/grpc/v1/client"
 	catalogclient "github.com/martketplace-vkr/catalog/pkg/api/grpc/v1/client"
 	orderclient "github.com/martketplace-vkr/order/pkg/api/grpc/v1/client"
 	userclient "github.com/martketplace-vkr/user/pkg/api/grpc/v1/client"
@@ -13,6 +14,7 @@ import (
 	serverCmp "github.com/martketplace-vkr/gateway/internal/app/cmps/server"
 	"github.com/martketplace-vkr/gateway/internal/common/middleware"
 	authv1 "github.com/martketplace-vkr/gateway/internal/services/auth/delivery/http/api/v1"
+	balancev1 "github.com/martketplace-vkr/gateway/internal/services/balance/delivery/http/api/v1"
 	catalogv1 "github.com/martketplace-vkr/gateway/internal/services/catalog/delivery/http/api/v1"
 	orderv1 "github.com/martketplace-vkr/gateway/internal/services/order/delivery/http/api/v1"
 	userv1 "github.com/martketplace-vkr/gateway/internal/services/user/delivery/http/api/v1"
@@ -51,10 +53,17 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	}
 	defer userConn.Close()
 
+	balanceConn, err := dialGRPC(ctx, cfg.Balance)
+	if err != nil {
+		return err
+	}
+	defer balanceConn.Close()
+
 	authCli := authclient.NewAuthClientServiceClient(authConn)
 	catalogCli := catalogclient.NewCatalogClientServiceClient(catalogConn)
 	orderCli := orderclient.NewOrderClientServiceClient(orderConn)
 	userCli := userclient.NewUserClientServiceClient(userConn)
+	balanceCli := balanceclient.NewBalanceClientServiceClient(balanceConn)
 
 	authMiddleware := middleware.NewAuth(authCli, cfg.Auth.Timeout.Duration)
 
@@ -77,12 +86,18 @@ func Run(ctx context.Context, cfg *config.Config) error {
 		authMiddleware,
 		userv1.New(userCli, cfg.User.Timeout.Duration),
 	)
+	balanceBinder := balancev1.NewBinder(
+		server,
+		authMiddleware,
+		balancev1.New(balanceCli, cfg.Balance.Timeout.Duration),
+	)
 
 	binder := routes.NewBinder(
 		authBinder,
 		catalogBinder,
 		orderBinder,
 		userBinder,
+		balanceBinder,
 	)
 
 	httpServer := http.NewWithBinder(

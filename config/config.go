@@ -19,4 +19,5 @@ type Config struct {
 	Catalog   GRPCClient       `validate:"required"`
 	Order     GRPCClient       `validate:"required"`
 	User      GRPCClient       `validate:"required"`
+	Balance   GRPCClient       `validate:"required"`
 }
