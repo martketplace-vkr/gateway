@@ -21,3 +21,9 @@ ingress:
   enabled: true
   host: marketplace.vitalmeuble.online
   port: 8000
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  tls:
+    - hosts:
+        - marketplace.vitalmeuble.online
+      secretName: marketplace-vitalmeuble-tls
