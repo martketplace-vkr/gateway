@@ -3,7 +3,7 @@ namespace: martketplace-vkr
 
 replicas: 1
 
-containerPort: 5000
+containerPort: 8000
 
 service:
   type: ClusterIP
