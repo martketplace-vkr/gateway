@@ -56,6 +56,7 @@ func (a *Auth) Require(required ...int64) fiber.Handler {
 		c.Locals(pkghttp.UserLocalsKey, &pkghttp.User{
 			ID:            resp.GetUserId(),
 			Role:          roleName,
+			Login:         resp.Login,
 			PermissionKey: permission,
 		})
 

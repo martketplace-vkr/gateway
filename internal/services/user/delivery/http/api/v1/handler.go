@@ -54,17 +54,12 @@ func (h *Handler) UpdateMe(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
-	email, err := h.resolveEmail(c, user.ID, req.Email)
-	if err != nil {
-		return err
-	}
-
 	ctx, cancel := httpx.RPCContext(c, h.timeout)
 	defer cancel()
 
 	resp, err := h.userClient.UpdateUser(ctx, &userclient.UpdateUserRequest{
 		UserId:    user.ID,
-		Email:     email,
+		Email:     user.Login,
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
 		AvatarUrl: req.AvatarURL,
