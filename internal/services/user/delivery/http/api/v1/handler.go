@@ -35,12 +35,11 @@ func (h *Handler) GetMe(c *fiber.Ctx) error {
 
 	resp, err := h.userClient.GetUser(ctx, &userclient.GetUserRequest{
 		UserId: user.ID,
+		Email:  user.Login,
 	})
 	if err != nil {
 		return httpx.MapGRPCError(err)
 	}
-
-	resp.Email = user.Login
 
 	return httpx.WriteProtoJSON(c, resp)
 }

@@ -9,7 +9,7 @@ require (
 	github.com/martketplace-vkr/catalog v1.0.0-rc001
 	github.com/martketplace-vkr/order v1.0.0-rc001
 	github.com/martketplace-vkr/pkg v0.0.1
-	github.com/martketplace-vkr/user v1.0.0-rc001
+	github.com/martketplace-vkr/user v1.0.0-rc002
 	github.com/prometheus/client_golang v1.23.2
 	google.golang.org/grpc v1.80.0
 	google.golang.org/protobuf v1.36.11

@@ -140,6 +140,8 @@ github.com/martketplace-vkr/pkg v0.0.1 h1:DW+CwmXmXzwDE2yj9vQBMRaEQRHcUvf1VaJcqI
 github.com/martketplace-vkr/pkg v0.0.1/go.mod h1:L3zsndZXrjEj5zSoYecSAyswehEuCtmgtsTXRXzCSBE=
 github.com/martketplace-vkr/user v1.0.0-rc001 h1:uWykv33ZWoeP+vie06lofr1L8m5KoIoVMyLld3uChHE=
 github.com/martketplace-vkr/user v1.0.0-rc001/go.mod h1:3VoFaLsUmUO8NuqSZZEVDftMffODuMh8dPrizIuX9OU=
+github.com/martketplace-vkr/user v1.0.0-rc002 h1:zNf8sUenpgHviSa/p+Jx9pd7aG1QGj8IZo1Au3YRdVs=
+github.com/martketplace-vkr/user v1.0.0-rc002/go.mod h1:3VoFaLsUmUO8NuqSZZEVDftMffODuMh8dPrizIuX9OU=
 github.com/mattn/go-colorable v0.1.13/go.mod h1:7S9/ev0klgBDR4GtXTXX8a3vIGJpMovkB8vQcUbaXHg=
 github.com/mattn/go-colorable v0.1.14 h1:9A9LHSqF/7dyVVX6g0U9cwm9pG3kP9gSzcuIPHPsaIE=
 github.com/mattn/go-colorable v0.1.14/go.mod h1:6LmQG8QLFO4G5z1gPvYEzlUgJ2wF+stgPZH1UqBm1s8=
