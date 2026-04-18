@@ -132,6 +132,8 @@ github.com/martketplace-vkr/catalog v1.0.0-rc001 h1:AV83Y7PAPueA9mbKdVNth5kSo4Oc
 github.com/martketplace-vkr/catalog v1.0.0-rc001/go.mod h1:ScX5buNdWAJaiIAlYSyvnhhAIywnQAfehgHKZxUkIn8=
 github.com/martketplace-vkr/media v0.0.0-20260418185756-f046f9660f74 h1:OOCCYGf90p2YpNTJkaRkSg9j5dZAwdx+HBsxbjqIbNE=
 github.com/martketplace-vkr/media v0.0.0-20260418185756-f046f9660f74/go.mod h1:P/sxKyTJQ8bcRpyL3AOPT9iK+VrwxHzfeh7y8UkXZ3g=
+github.com/martketplace-vkr/media v1.0.0-rc001 h1:pZY7S6NwCOIIrv4wzjOxMhn2A5G2VD7HsOvgDQCWf08=
+github.com/martketplace-vkr/media v1.0.0-rc001/go.mod h1:P/sxKyTJQ8bcRpyL3AOPT9iK+VrwxHzfeh7y8UkXZ3g=
 github.com/martketplace-vkr/order v1.0.0-rc001 h1:yl59CVSASSU9gHys6SpXhBohv3BKMFJbC9lnGAXmYWc=
 github.com/martketplace-vkr/order v1.0.0-rc001/go.mod h1:kHGzLAYXnBosQneQ/Yny5HtRnkk9gdcM3WEcCq1rr7U=
 github.com/martketplace-vkr/pkg v0.0.1 h1:DW+CwmXmXzwDE2yj9vQBMRaEQRHcUvf1VaJcqIc4Ewc=
