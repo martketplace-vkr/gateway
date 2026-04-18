@@ -41,7 +41,7 @@ func (a *Auth) Require(required ...int64) fiber.Handler {
 			Token: token,
 		})
 		if err != nil {
-			return httpx.MapGRPCError(err)
+			return fiber.ErrUnauthorized
 		}
 
 		if resp.GetUserId() <= 0 {
