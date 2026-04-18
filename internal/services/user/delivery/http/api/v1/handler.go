@@ -40,6 +40,8 @@ func (h *Handler) GetMe(c *fiber.Ctx) error {
 		return httpx.MapGRPCError(err)
 	}
 
+	resp.Email = user.Login
+
 	return httpx.WriteProtoJSON(c, resp)
 }
 
