@@ -35,4 +35,13 @@ func (b *Binder) bind(router fiber.Router) {
 	auth.Post("/refresh", b.handler.Refresh)
 	auth.Post("/logout", b.handler.Logout)
 	auth.Post("/sign-out", b.handler.Logout)
+
+	adminAuth := router.Group("/admin/auth")
+	adminAuth.Post("/register", b.handler.AdminRegister)
+	adminAuth.Post("/sign-up", b.handler.AdminRegister)
+	adminAuth.Post("/login", b.handler.AdminLogin)
+	adminAuth.Post("/sign-in", b.handler.AdminLogin)
+	adminAuth.Post("/refresh", b.handler.AdminRefresh)
+	adminAuth.Post("/logout", b.handler.AdminLogout)
+	adminAuth.Post("/sign-out", b.handler.AdminLogout)
 }

@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 
+	authadmin "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/admin"
 	authclient "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/client"
 	balanceclient "github.com/martketplace-vkr/balance/pkg/api/grpc/v1/client"
 	catalogclient "github.com/martketplace-vkr/catalog/pkg/api/grpc/v1/client"
@@ -59,17 +60,18 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	}
 	defer balanceConn.Close()
 
+	adminAuthCli := authadmin.NewAuthAdminServiceClient(authConn)
 	authCli := authclient.NewAuthClientServiceClient(authConn)
 	catalogCli := catalogclient.NewCatalogClientServiceClient(catalogConn)
 	orderCli := orderclient.NewOrderClientServiceClient(orderConn)
 	userCli := userclient.NewUserClientServiceClient(userConn)
 	balanceCli := balanceclient.NewBalanceClientServiceClient(balanceConn)
 
-	authMiddleware := middleware.NewAuth(authCli, cfg.Auth.Timeout.Duration)
+	authMiddleware := middleware.NewAuth(authCli, adminAuthCli, cfg.Auth.Timeout.Duration)
 
 	authBinder := authv1.NewBinder(
 		server,
-		authv1.New(authCli, userCli, cfg.Auth.Timeout.Duration, cfg.User.Timeout.Duration),
+		authv1.New(authCli, adminAuthCli, userCli, cfg.Auth.Timeout.Duration, cfg.User.Timeout.Duration),
 	)
 	catalogBinder := catalogv1.NewBinder(
 		server,

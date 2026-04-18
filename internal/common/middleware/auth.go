@@ -5,23 +5,31 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	authadmin "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/admin"
 	authclient "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/client"
 	"github.com/martketplace-vkr/gateway/internal/common/httpx"
 	"github.com/martketplace-vkr/gateway/pkg/roles"
 	pkghttp "github.com/martketplace-vkr/pkg/server/http"
+	"google.golang.org/grpc/codes"
 )
 
 const bearerPrefix = "Bearer "
 
 type Auth struct {
-	client  authclient.AuthClientServiceClient
-	timeout time.Duration
+	client      authclient.AuthClientServiceClient
+	adminClient authadmin.AuthAdminServiceClient
+	timeout     time.Duration
 }
 
-func NewAuth(client authclient.AuthClientServiceClient, timeout time.Duration) *Auth {
+func NewAuth(
+	client authclient.AuthClientServiceClient,
+	adminClient authadmin.AuthAdminServiceClient,
+	timeout time.Duration,
+) *Auth {
 	return &Auth{
-		client:  client,
-		timeout: timeout,
+		client:      client,
+		adminClient: adminClient,
+		timeout:     timeout,
 	}
 }
 
@@ -34,34 +42,83 @@ func (a *Auth) Require(required ...int64) fiber.Handler {
 			return err
 		}
 
-		ctx, cancel := httpx.RPCContext(c, a.timeout)
-		defer cancel()
-
-		resp, err := a.client.ValidateToken(ctx, &authclient.ValidateTokenRequest{
-			Token: token,
-		})
+		user, err := a.validateToken(c, token, requiredAccess)
 		if err != nil {
 			return fiber.ErrUnauthorized
 		}
 
-		if resp.GetUserId() <= 0 {
+		if user.ID <= 0 {
 			return fiber.ErrUnauthorized
 		}
 
-		roleName, permission := resolveRole(resp.GetRole())
-		if requiredAccess != 0 && !roles.CheckAccess(permission, requiredAccess) {
+		if requiredAccess != 0 && !roles.CheckAccess(user.PermissionKey, requiredAccess) {
 			return fiber.ErrForbidden
 		}
 
-		c.Locals(pkghttp.UserLocalsKey, &pkghttp.User{
-			ID:            resp.GetUserId(),
-			Role:          roleName,
-			Login:         resp.Login,
-			PermissionKey: permission,
-		})
+		c.Locals(pkghttp.UserLocalsKey, user)
 
 		return c.Next()
 	}
+}
+
+func (a *Auth) validateToken(c *fiber.Ctx, token string, requiredAccess int64) (*pkghttp.User, error) {
+	if requiredAccess == roles.Admin {
+		if user, err := a.validateAdminToken(c, token); err == nil {
+			return user, nil
+		}
+
+		return nil, fiber.ErrUnauthorized
+	}
+
+	if user, err := a.validateClientToken(c, token); err == nil {
+		return user, nil
+	} else if !httpx.IsGRPCCode(err, codes.Unauthenticated) {
+		return nil, err
+	}
+
+	return a.validateAdminToken(c, token)
+}
+
+func (a *Auth) validateClientToken(c *fiber.Ctx, token string) (*pkghttp.User, error) {
+	ctx, cancel := httpx.RPCContext(c, a.timeout)
+	defer cancel()
+
+	resp, err := a.client.ValidateToken(ctx, &authclient.ValidateTokenRequest{
+		Token: token,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	roleName, permission := resolveRole(resp.GetRole())
+
+	return &pkghttp.User{
+		ID:            resp.GetUserId(),
+		Role:          roleName,
+		Login:         resp.Login,
+		PermissionKey: permission,
+	}, nil
+}
+
+func (a *Auth) validateAdminToken(c *fiber.Ctx, token string) (*pkghttp.User, error) {
+	ctx, cancel := httpx.RPCContext(c, a.timeout)
+	defer cancel()
+
+	resp, err := a.adminClient.ValidateToken(ctx, &authadmin.ValidateTokenRequest{
+		Token: token,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	roleName, permission := resolveRole(resp.GetRole())
+
+	return &pkghttp.User{
+		ID:            resp.GetUserId(),
+		Role:          roleName,
+		Login:         resp.Login,
+		PermissionKey: permission,
+	}, nil
 }
 
 func CurrentUser(c *fiber.Ctx) (*pkghttp.User, error) {
