@@ -21,6 +21,11 @@ type CreateProductRequest struct {
 	Images      []ProductImageInput     `json:"images"`
 }
 
+type CreateCategoryRequest struct {
+	Name     string `json:"name"`
+	ParentID *int64 `json:"parent_id"`
+}
+
 type UpdateProductRequest struct {
 	VendorID    int64                   `json:"vendor_id"`
 	CategoryID  int64                   `json:"category_id"`

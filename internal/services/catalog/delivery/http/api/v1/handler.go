@@ -2,22 +2,31 @@ package v1
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	catalogadmin "github.com/martketplace-vkr/catalog/pkg/api/grpc/v1/admin"
 	catalogclient "github.com/martketplace-vkr/catalog/pkg/api/grpc/v1/client"
 	"github.com/martketplace-vkr/gateway/internal/common/httpx"
+	"github.com/martketplace-vkr/gateway/internal/services/catalog/models"
 )
 
 type Handler struct {
-	catalogClient catalogclient.CatalogClientServiceClient
-	timeout       time.Duration
+	catalogClient      catalogclient.CatalogClientServiceClient
+	catalogAdminClient catalogadmin.CatalogAdminServiceClient
+	timeout            time.Duration
 }
 
-func New(catalogClient catalogclient.CatalogClientServiceClient, timeout time.Duration) *Handler {
+func New(
+	catalogClient catalogclient.CatalogClientServiceClient,
+	catalogAdminClient catalogadmin.CatalogAdminServiceClient,
+	timeout time.Duration,
+) *Handler {
 	return &Handler{
-		catalogClient: catalogClient,
-		timeout:       timeout,
+		catalogClient:      catalogClient,
+		catalogAdminClient: catalogAdminClient,
+		timeout:            timeout,
 	}
 }
 
@@ -44,6 +53,35 @@ func (h *Handler) GetCategories(c *fiber.Ctx) error {
 		ParentId:        parentID,
 		FilterByParent:  filterByParent,
 		IncludeChildren: includeChildren,
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	return httpx.WriteProtoJSON(c, resp)
+}
+
+func (h *Handler) CreateCategory(c *fiber.Ctx) error {
+	req := models.CreateCategoryRequest{}
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "name is required")
+	}
+
+	if req.ParentID != nil && *req.ParentID <= 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "parent_id must be greater than zero")
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	resp, err := h.catalogAdminClient.CreateCategory(ctx, &catalogadmin.CreateCategoryRequest{
+		Name:     name,
+		ParentId: req.ParentID,
 	})
 	if err != nil {
 		return httpx.MapGRPCError(err)
