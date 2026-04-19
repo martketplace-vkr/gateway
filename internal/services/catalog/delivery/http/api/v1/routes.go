@@ -34,6 +34,7 @@ func (b *Binder) bind(router fiber.Router) {
 
 	catalog.Get("/categories", b.handler.GetCategories)
 	catalog.Post("/categories", b.auth.Require(roles.Admin), b.handler.CreateCategory)
+	catalog.Delete("/categories/:category_id", b.auth.Require(roles.Admin), b.handler.DeleteCategory)
 	catalog.Get("/products", b.handler.ListProducts)
 	catalog.Get("/products/:product_id", b.handler.GetProduct)
 	catalog.Post("/products", b.auth.Require(roles.Client), b.handler.CreateProduct)
@@ -42,4 +43,5 @@ func (b *Binder) bind(router fiber.Router) {
 
 	adminCatalog := router.Group("/admin/catalog", b.auth.Require(roles.Admin))
 	adminCatalog.Post("/categories", b.handler.CreateCategory)
+	adminCatalog.Delete("/categories/:category_id", b.handler.DeleteCategory)
 }

@@ -90,6 +90,25 @@ func (h *Handler) CreateCategory(c *fiber.Ctx) error {
 	return httpx.WriteProtoJSON(c, resp)
 }
 
+func (h *Handler) DeleteCategory(c *fiber.Ctx) error {
+	categoryID, err := strconv.ParseInt(c.Params("category_id"), 10, 64)
+	if err != nil || categoryID <= 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid category_id")
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	resp, err := h.catalogAdminClient.DeleteCategory(ctx, &catalogadmin.DeleteCategoryRequest{
+		CategoryId: categoryID,
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	return httpx.WriteProtoJSON(c, resp)
+}
+
 func (h *Handler) ListProducts(c *fiber.Ctx) error {
 	categoryID, _, err := parseOptionalInt64Query(c, "category_id")
 	if err != nil {
