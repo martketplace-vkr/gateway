@@ -8,25 +8,31 @@ import (
 	"github.com/gofiber/fiber/v2"
 	catalogadmin "github.com/martketplace-vkr/catalog/pkg/api/grpc/v1/admin"
 	catalogclient "github.com/martketplace-vkr/catalog/pkg/api/grpc/v1/client"
+	catalogdomain "github.com/martketplace-vkr/catalog/pkg/api/grpc/v1/domain"
+	catalogvendor "github.com/martketplace-vkr/catalog/pkg/api/grpc/v1/vendor"
 	"github.com/martketplace-vkr/gateway/internal/common/httpx"
+	"github.com/martketplace-vkr/gateway/internal/common/middleware"
 	"github.com/martketplace-vkr/gateway/internal/services/catalog/models"
 )
 
 type Handler struct {
-	catalogClient      catalogclient.CatalogClientServiceClient
-	catalogAdminClient catalogadmin.CatalogAdminServiceClient
-	timeout            time.Duration
+	catalogClient       catalogclient.CatalogClientServiceClient
+	catalogAdminClient  catalogadmin.CatalogAdminServiceClient
+	catalogVendorClient catalogvendor.CatalogVendorServiceClient
+	timeout             time.Duration
 }
 
 func New(
 	catalogClient catalogclient.CatalogClientServiceClient,
 	catalogAdminClient catalogadmin.CatalogAdminServiceClient,
+	catalogVendorClient catalogvendor.CatalogVendorServiceClient,
 	timeout time.Duration,
 ) *Handler {
 	return &Handler{
-		catalogClient:      catalogClient,
-		catalogAdminClient: catalogAdminClient,
-		timeout:            timeout,
+		catalogClient:       catalogClient,
+		catalogAdminClient:  catalogAdminClient,
+		catalogVendorClient: catalogVendorClient,
+		timeout:             timeout,
 	}
 }
 
@@ -166,11 +172,114 @@ func (h *Handler) GetProduct(c *fiber.Ctx) error {
 }
 
 func (h *Handler) CreateProduct(c *fiber.Ctx) error {
-	return fiber.NewError(fiber.StatusNotImplemented, "product mutations are not supported by catalog client service")
+	req := models.CreateProductRequest{}
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+
+	user, err := middleware.CurrentUser(c)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	resp, err := h.catalogVendorClient.CreateProduct(ctx, &catalogvendor.CreateProductRequest{
+		VendorId:    user.ID,
+		CategoryId:  req.CategoryID,
+		Name:        req.Name,
+		Description: req.Description,
+		Price:       req.Price,
+		StockCount:  req.StockCount,
+		Attributes:  mapProductAttributes(req.Attributes),
+		Images:      mapProductImages(req.Images),
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	return httpx.WriteProtoJSON(c, resp)
 }
 
 func (h *Handler) UpdateProduct(c *fiber.Ctx) error {
-	return fiber.NewError(fiber.StatusNotImplemented, "product mutations are not supported by catalog client service")
+	req := models.UpdateProductRequest{}
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+
+	user, err := middleware.CurrentUser(c)
+	if err != nil {
+		return err
+	}
+
+	productID, err := strconv.ParseInt(c.Params("product_id"), 10, 64)
+	if err != nil || productID <= 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid product_id")
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	resp, err := h.catalogVendorClient.UpdateProduct(ctx, &catalogvendor.UpdateProductRequest{
+		ProductId:   productID,
+		VendorId:    user.ID,
+		CategoryId:  req.CategoryID,
+		Name:        req.Name,
+		Description: req.Description,
+		Price:       req.Price,
+		StockCount:  req.StockCount,
+		Attributes:  mapProductAttributes(req.Attributes),
+		Images:      mapProductImages(req.Images),
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	return httpx.WriteProtoJSON(c, resp)
+}
+
+func (h *Handler) GetVendorProducts(c *fiber.Ctx) error {
+	user, err := middleware.CurrentUser(c)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	resp, err := h.catalogVendorClient.GetVendorProduct(ctx, &catalogvendor.GetVendorProductRequest{
+		VendorID: user.ID,
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	return httpx.WriteProtoJSON(c, resp)
+}
+
+func mapProductAttributes(attributes []models.ProductAttributeInput) []*catalogdomain.ProductAttributeInput {
+	result := make([]*catalogdomain.ProductAttributeInput, 0, len(attributes))
+	for _, attribute := range attributes {
+		result = append(result, &catalogdomain.ProductAttributeInput{
+			Name:  attribute.Name,
+			Value: attribute.Value,
+		})
+	}
+
+	return result
+}
+
+func mapProductImages(images []models.ProductImageInput) []*catalogdomain.ProductImageInput {
+	result := make([]*catalogdomain.ProductImageInput, 0, len(images))
+	for _, image := range images {
+		result = append(result, &catalogdomain.ProductImageInput{
+			Url:    image.URL,
+			IsMain: image.IsMain,
+		})
+	}
+
+	return result
 }
 
 func parseOptionalInt64Query(c *fiber.Ctx, key string) (int64, bool, error) {

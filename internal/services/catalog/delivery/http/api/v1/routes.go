@@ -41,6 +41,12 @@ func (b *Binder) bind(router fiber.Router) {
 	catalog.Put("/products/:product_id", b.auth.Require(roles.Client), b.handler.UpdateProduct)
 	catalog.Patch("/products/:product_id", b.auth.Require(roles.Client), b.handler.UpdateProduct)
 
+	vendorCatalog := router.Group("/vendor/catalog", b.auth.Require(roles.Vendor))
+	vendorCatalog.Get("/products", b.handler.GetVendorProducts)
+	vendorCatalog.Post("/products", b.handler.CreateProduct)
+	vendorCatalog.Put("/products/:product_id", b.handler.UpdateProduct)
+	vendorCatalog.Patch("/products/:product_id", b.handler.UpdateProduct)
+
 	adminCatalog := router.Group("/admin/catalog", b.auth.Require(roles.Admin))
 	adminCatalog.Post("/categories", b.handler.CreateCategory)
 	adminCatalog.Delete("/categories/:category_id", b.handler.DeleteCategory)

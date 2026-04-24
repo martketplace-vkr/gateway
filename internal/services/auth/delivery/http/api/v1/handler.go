@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	authadmin "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/admin"
 	authclient "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/client"
+	authvendor "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/vendor"
 	"github.com/martketplace-vkr/gateway/internal/common/httpx"
 	"github.com/martketplace-vkr/gateway/internal/services/auth/models"
 	"github.com/martketplace-vkr/gateway/pkg/consts"
@@ -14,28 +15,32 @@ import (
 )
 
 const adminSessionKey = "marketplace_admin_session"
+const vendorSessionKey = "marketplace_vendor_session"
 
 type Handler struct {
-	authClient      authclient.AuthClientServiceClient
-	adminAuthClient authadmin.AuthAdminServiceClient
-	userClient      userclient.UserClientServiceClient
-	authTimeout     time.Duration
-	userTimeout     time.Duration
+	authClient       authclient.AuthClientServiceClient
+	adminAuthClient  authadmin.AuthAdminServiceClient
+	vendorAuthClient authvendor.AuthVendorServiceClient
+	userClient       userclient.UserClientServiceClient
+	authTimeout      time.Duration
+	userTimeout      time.Duration
 }
 
 func New(
 	authClient authclient.AuthClientServiceClient,
 	adminAuthClient authadmin.AuthAdminServiceClient,
+	vendorAuthClient authvendor.AuthVendorServiceClient,
 	userClient userclient.UserClientServiceClient,
 	authTimeout time.Duration,
 	userTimeout time.Duration,
 ) *Handler {
 	return &Handler{
-		authClient:      authClient,
-		adminAuthClient: adminAuthClient,
-		userClient:      userClient,
-		authTimeout:     authTimeout,
-		userTimeout:     userTimeout,
+		authClient:       authClient,
+		adminAuthClient:  adminAuthClient,
+		vendorAuthClient: vendorAuthClient,
+		userClient:       userClient,
+		authTimeout:      authTimeout,
+		userTimeout:      userTimeout,
 	}
 }
 
@@ -240,6 +245,135 @@ func (h *Handler) AdminLogout(c *fiber.Ctx) error {
 	h.clearSessionCookie(c, adminSessionKey)
 
 	return httpx.WriteProtoJSON(c, resp)
+}
+
+func (h *Handler) VendorRegister(c *fiber.Ctx) error {
+	req := models.RegisterRequest{}
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.authTimeout)
+	defer cancel()
+
+	resp, err := h.vendorAuthClient.Register(ctx, &authvendor.RegisterRequest{
+		Email:    req.Email,
+		Password: req.Password,
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	return httpx.WriteProtoJSON(c, resp)
+}
+
+func (h *Handler) VendorLogin(c *fiber.Ctx) error {
+	req := models.LoginRequest{}
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.authTimeout)
+	defer cancel()
+
+	resp, err := h.vendorAuthClient.Login(ctx, &authvendor.LoginRequest{
+		Email:    req.Email,
+		Password: req.Password,
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	h.setSessionCookie(c, vendorSessionKey, resp.GetRefreshToken())
+
+	return httpx.WriteProtoJSON(c, resp)
+}
+
+func (h *Handler) VendorRefresh(c *fiber.Ctx) error {
+	req := models.RefreshRequest{}
+	if len(c.Body()) > 0 {
+		if err := c.BodyParser(&req); err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, err.Error())
+		}
+	}
+
+	refreshToken := resolveRefreshToken(req.RefreshToken, c.Cookies(vendorSessionKey))
+	if refreshToken == "" {
+		return fiber.ErrUnauthorized
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.authTimeout)
+	defer cancel()
+
+	resp, err := h.vendorAuthClient.RefreshToken(ctx, &authvendor.RefreshTokenRequest{
+		RefreshToken: refreshToken,
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	h.setSessionCookie(c, vendorSessionKey, resp.GetRefreshToken())
+
+	return httpx.WriteProtoJSON(c, resp)
+}
+
+func (h *Handler) VendorLogout(c *fiber.Ctx) error {
+	req := models.LogoutRequest{}
+	if len(c.Body()) > 0 {
+		if err := c.BodyParser(&req); err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, err.Error())
+		}
+	}
+
+	refreshToken := resolveRefreshToken(req.RefreshToken, c.Cookies(vendorSessionKey))
+	if refreshToken == "" {
+		return fiber.ErrUnauthorized
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.authTimeout)
+	defer cancel()
+
+	resp, err := h.vendorAuthClient.Logout(ctx, &authvendor.LogoutRequest{
+		RefreshToken: refreshToken,
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	h.clearSessionCookie(c, vendorSessionKey)
+
+	return httpx.WriteProtoJSON(c, resp)
+}
+
+func (h *Handler) VendorMe(c *fiber.Ctx) error {
+	token := strings.TrimSpace(c.Get(fiber.HeaderAuthorization))
+	if token == "" {
+		return fiber.ErrUnauthorized
+	}
+
+	if strings.HasPrefix(strings.ToLower(token), "bearer ") {
+		token = strings.TrimSpace(token[7:])
+	}
+
+	if token == "" {
+		return fiber.ErrUnauthorized
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.authTimeout)
+	defer cancel()
+
+	resp, err := h.vendorAuthClient.ValidateToken(ctx, &authvendor.ValidateTokenRequest{
+		Token: token,
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	return c.JSON(models.VendorMeResponse{
+		ID:    resp.GetVendorId(),
+		Email: resp.GetLogin(),
+		Role:  strings.TrimSpace(resp.GetRole()),
+	})
 }
 
 func (h *Handler) resolveUserID(c *fiber.Ctx, accessToken string) (int64, error) {

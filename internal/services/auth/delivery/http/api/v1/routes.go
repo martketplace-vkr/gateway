@@ -44,4 +44,14 @@ func (b *Binder) bind(router fiber.Router) {
 	adminAuth.Post("/refresh", b.handler.AdminRefresh)
 	adminAuth.Post("/logout", b.handler.AdminLogout)
 	adminAuth.Post("/sign-out", b.handler.AdminLogout)
+
+	vendorAuth := router.Group("/vendor/auth")
+	vendorAuth.Post("/register", b.handler.VendorRegister)
+	vendorAuth.Post("/sign-up", b.handler.VendorRegister)
+	vendorAuth.Post("/login", b.handler.VendorLogin)
+	vendorAuth.Post("/sign-in", b.handler.VendorLogin)
+	vendorAuth.Post("/refresh", b.handler.VendorRefresh)
+	vendorAuth.Post("/logout", b.handler.VendorLogout)
+	vendorAuth.Post("/sign-out", b.handler.VendorLogout)
+	vendorAuth.Get("/me", b.handler.VendorMe)
 }

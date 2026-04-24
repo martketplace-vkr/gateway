@@ -37,4 +37,9 @@ func (b *Binder) bind(router fiber.Router) {
 	orders.Get("/", b.handler.GetOrderList)
 	orders.Get("/:order_id", b.handler.GetOrder)
 	orders.Post("/:order_id/cancel", b.handler.CancelOrder)
+
+	vendorOrders := router.Group("/vendor/orders", b.auth.Require(roles.Vendor))
+	vendorOrders.Get("", b.handler.GetVendorOrderList)
+	vendorOrders.Get("/", b.handler.GetVendorOrderList)
+	vendorOrders.Patch("/:order_id", b.handler.UpdateVendorOrder)
 }

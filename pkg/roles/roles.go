@@ -4,24 +4,28 @@ import "math"
 
 const (
 	Client = 1
-	All    = 1 << iota
+	Vendor = 1 << 1
+	All    = Client | Vendor
 	Admin  = math.MaxInt64
 )
 
 const (
 	RoleClient = "client"
+	RoleVendor = "vendor"
 	RoleAdmin  = "admin"
 	RoleAll    = "all"
 )
 
 var roles = map[string]struct{}{
 	RoleClient: {},
+	RoleVendor: {},
 	RoleAdmin:  {},
 	RoleAll:    {},
 }
 
 var RoleMap = map[string]int64{
 	RoleClient: Client,
+	RoleVendor: Vendor,
 	RoleAdmin:  Admin,
 }
 

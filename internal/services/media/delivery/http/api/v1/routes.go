@@ -30,7 +30,7 @@ func (b *Binder) BindRoutes(_ context.Context) {
 }
 
 func (b *Binder) bind(router fiber.Router) {
-	media := router.Group("/media", b.auth.Require(roles.Client, roles.Admin))
+	media := router.Group("/media", b.auth.Require(roles.Client, roles.Vendor, roles.Admin))
 
 	media.Post("/upload", b.handler.Upload)
 	media.Post("/files", b.handler.Upload)

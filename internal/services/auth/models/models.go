@@ -18,3 +18,12 @@ type RefreshRequest struct {
 type LogoutRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
+
+type VendorMeResponse struct {
+	ID        int64  `json:"id"`
+	Email     string `json:"email"`
+	Role      string `json:"role"`
+	FirstName string `json:"first_name,omitempty"`
+	LastName  string `json:"last_name,omitempty"`
+	AvatarURL string `json:"avatar_url,omitempty"`
+}

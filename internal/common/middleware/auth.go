@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	authadmin "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/admin"
 	authclient "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/client"
+	authvendor "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/vendor"
 	"github.com/martketplace-vkr/gateway/internal/common/httpx"
 	"github.com/martketplace-vkr/gateway/pkg/roles"
 	pkghttp "github.com/martketplace-vkr/pkg/server/http"
@@ -16,20 +17,23 @@ import (
 const bearerPrefix = "Bearer "
 
 type Auth struct {
-	client      authclient.AuthClientServiceClient
-	adminClient authadmin.AuthAdminServiceClient
-	timeout     time.Duration
+	client       authclient.AuthClientServiceClient
+	adminClient  authadmin.AuthAdminServiceClient
+	vendorClient authvendor.AuthVendorServiceClient
+	timeout      time.Duration
 }
 
 func NewAuth(
 	client authclient.AuthClientServiceClient,
 	adminClient authadmin.AuthAdminServiceClient,
+	vendorClient authvendor.AuthVendorServiceClient,
 	timeout time.Duration,
 ) *Auth {
 	return &Auth{
-		client:      client,
-		adminClient: adminClient,
-		timeout:     timeout,
+		client:       client,
+		adminClient:  adminClient,
+		vendorClient: vendorClient,
+		timeout:      timeout,
 	}
 }
 
@@ -70,13 +74,18 @@ func (a *Auth) validateToken(c *fiber.Ctx, token string, requiredAccess int64) (
 		return nil, fiber.ErrUnauthorized
 	}
 
-	if user, err := a.validateClientToken(c, token); err == nil {
-		return user, nil
-	} else if !httpx.IsGRPCCode(err, codes.Unauthenticated) {
-		return nil, err
+	validateSequence := a.resolveValidationSequence(requiredAccess)
+	for _, validator := range validateSequence {
+		user, err := validator(c, token)
+		if err == nil {
+			return user, nil
+		}
+		if !httpx.IsGRPCCode(err, codes.Unauthenticated) {
+			return nil, err
+		}
 	}
 
-	return a.validateAdminToken(c, token)
+	return nil, fiber.ErrUnauthorized
 }
 
 func (a *Auth) validateClientToken(c *fiber.Ctx, token string) (*pkghttp.User, error) {
@@ -121,6 +130,27 @@ func (a *Auth) validateAdminToken(c *fiber.Ctx, token string) (*pkghttp.User, er
 	}, nil
 }
 
+func (a *Auth) validateVendorToken(c *fiber.Ctx, token string) (*pkghttp.User, error) {
+	ctx, cancel := httpx.RPCContext(c, a.timeout)
+	defer cancel()
+
+	resp, err := a.vendorClient.ValidateToken(ctx, &authvendor.ValidateTokenRequest{
+		Token: token,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	roleName, permission := resolveRole(resp.GetRole())
+
+	return &pkghttp.User{
+		ID:            resp.GetVendorId(),
+		Role:          roleName,
+		Login:         resp.Login,
+		PermissionKey: permission,
+	}, nil
+}
+
 func CurrentUser(c *fiber.Ctx) (*pkghttp.User, error) {
 	user, ok := c.Locals(pkghttp.UserLocalsKey).(*pkghttp.User)
 	if !ok || user == nil || user.ID <= 0 {
@@ -155,6 +185,8 @@ func resolveRole(roleName string) (string, int64) {
 		return roles.RoleAdmin, roles.Admin
 	case roles.RoleAll:
 		return roles.RoleAll, roles.All
+	case roles.RoleVendor:
+		return roles.RoleVendor, roles.Vendor
 	case roles.RoleClient, "":
 		return roles.RoleClient, roles.Client
 	default:
@@ -163,5 +195,32 @@ func resolveRole(roleName string) (string, int64) {
 		}
 
 		return roles.RoleClient, roles.Client
+	}
+}
+
+func (a *Auth) resolveValidationSequence(requiredAccess int64) []func(*fiber.Ctx, string) (*pkghttp.User, error) {
+	switch {
+	case requiredAccess == roles.Vendor:
+		return []func(*fiber.Ctx, string) (*pkghttp.User, error){
+			a.validateVendorToken,
+			a.validateAdminToken,
+		}
+	case requiredAccess == roles.Client:
+		return []func(*fiber.Ctx, string) (*pkghttp.User, error){
+			a.validateClientToken,
+			a.validateAdminToken,
+		}
+	case requiredAccess&(roles.Client|roles.Vendor) == roles.All:
+		return []func(*fiber.Ctx, string) (*pkghttp.User, error){
+			a.validateClientToken,
+			a.validateVendorToken,
+			a.validateAdminToken,
+		}
+	default:
+		return []func(*fiber.Ctx, string) (*pkghttp.User, error){
+			a.validateClientToken,
+			a.validateVendorToken,
+			a.validateAdminToken,
+		}
 	}
 }

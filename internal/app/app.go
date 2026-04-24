@@ -5,11 +5,14 @@ import (
 
 	authadmin "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/admin"
 	authclient "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/client"
+	authvendor "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/vendor"
 	balanceclient "github.com/martketplace-vkr/balance/pkg/api/grpc/v1/client"
 	catalogadmin "github.com/martketplace-vkr/catalog/pkg/api/grpc/v1/admin"
 	catalogclient "github.com/martketplace-vkr/catalog/pkg/api/grpc/v1/client"
+	catalogvendor "github.com/martketplace-vkr/catalog/pkg/api/grpc/v1/vendor"
 	mediaclient "github.com/martketplace-vkr/media/pkg/api/grpc/v1/media"
 	orderclient "github.com/martketplace-vkr/order/pkg/api/grpc/v1/client"
+	ordervendor "github.com/martketplace-vkr/order/pkg/api/grpc/v1/vendor"
 	userclient "github.com/martketplace-vkr/user/pkg/api/grpc/v1/client"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -71,28 +74,31 @@ func Run(ctx context.Context, cfg *config.Config) error {
 
 	adminAuthCli := authadmin.NewAuthAdminServiceClient(authConn)
 	authCli := authclient.NewAuthClientServiceClient(authConn)
+	vendorAuthCli := authvendor.NewAuthVendorServiceClient(authConn)
 	catalogAdminCli := catalogadmin.NewCatalogAdminServiceClient(catalogConn)
 	catalogCli := catalogclient.NewCatalogClientServiceClient(catalogConn)
+	catalogVendorCli := catalogvendor.NewCatalogVendorServiceClient(catalogConn)
 	orderCli := orderclient.NewOrderClientServiceClient(orderConn)
+	orderVendorCli := ordervendor.NewOrderVendorServiceClient(orderConn)
 	userCli := userclient.NewUserClientServiceClient(userConn)
 	balanceCli := balanceclient.NewBalanceClientServiceClient(balanceConn)
 	mediaCli := mediaclient.NewMediaServiceClient(mediaConn)
 
-	authMiddleware := middleware.NewAuth(authCli, adminAuthCli, cfg.Auth.Timeout.Duration)
+	authMiddleware := middleware.NewAuth(authCli, adminAuthCli, vendorAuthCli, cfg.Auth.Timeout.Duration)
 
 	authBinder := authv1.NewBinder(
 		server,
-		authv1.New(authCli, adminAuthCli, userCli, cfg.Auth.Timeout.Duration, cfg.User.Timeout.Duration),
+		authv1.New(authCli, adminAuthCli, vendorAuthCli, userCli, cfg.Auth.Timeout.Duration, cfg.User.Timeout.Duration),
 	)
 	catalogBinder := catalogv1.NewBinder(
 		server,
 		authMiddleware,
-		catalogv1.New(catalogCli, catalogAdminCli, cfg.Catalog.Timeout.Duration),
+		catalogv1.New(catalogCli, catalogAdminCli, catalogVendorCli, cfg.Catalog.Timeout.Duration),
 	)
 	orderBinder := orderv1.NewBinder(
 		server,
 		authMiddleware,
-		orderv1.New(orderCli, cfg.Order.Timeout.Duration),
+		orderv1.New(orderCli, orderVendorCli, cfg.Order.Timeout.Duration),
 	)
 	userBinder := userv1.NewBinder(
 		server,

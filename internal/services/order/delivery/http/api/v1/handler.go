@@ -10,17 +10,24 @@ import (
 	"github.com/martketplace-vkr/gateway/internal/common/middleware"
 	"github.com/martketplace-vkr/gateway/internal/services/order/models"
 	orderclient "github.com/martketplace-vkr/order/pkg/api/grpc/v1/client"
+	ordervendor "github.com/martketplace-vkr/order/pkg/api/grpc/v1/vendor"
 )
 
 type Handler struct {
-	orderClient orderclient.OrderClientServiceClient
-	timeout     time.Duration
+	orderClient       orderclient.OrderClientServiceClient
+	orderVendorClient ordervendor.OrderVendorServiceClient
+	timeout           time.Duration
 }
 
-func New(orderClient orderclient.OrderClientServiceClient, timeout time.Duration) *Handler {
+func New(
+	orderClient orderclient.OrderClientServiceClient,
+	orderVendorClient ordervendor.OrderVendorServiceClient,
+	timeout time.Duration,
+) *Handler {
 	return &Handler{
-		orderClient: orderClient,
-		timeout:     timeout,
+		orderClient:       orderClient,
+		orderVendorClient: orderVendorClient,
+		timeout:           timeout,
 	}
 }
 
@@ -124,6 +131,60 @@ func (h *Handler) CancelOrder(c *fiber.Ctx) error {
 	resp, err := h.orderClient.CancellOrder(ctx, &orderclient.CancelOrderRequest{
 		UserId:  user.ID,
 		OrderId: orderID,
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	return httpx.WriteProtoJSON(c, resp)
+}
+
+func (h *Handler) GetVendorOrderList(c *fiber.Ctx) error {
+	user, err := middleware.CurrentUser(c)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	resp, err := h.orderVendorClient.GetOrderList(ctx, &ordervendor.GetOrderListRequest{
+		VendorId: user.ID,
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	return httpx.WriteProtoJSON(c, resp)
+}
+
+func (h *Handler) UpdateVendorOrder(c *fiber.Ctx) error {
+	user, err := middleware.CurrentUser(c)
+	if err != nil {
+		return err
+	}
+
+	orderID, err := strconv.ParseInt(c.Params("order_id"), 10, 64)
+	if err != nil || orderID <= 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid order_id")
+	}
+
+	req := models.UpdateVendorOrderRequest{}
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+
+	if strings.TrimSpace(req.Status) == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "status is required")
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	resp, err := h.orderVendorClient.UpdateOrder(ctx, &ordervendor.UpdateOrderRequest{
+		VendorId: user.ID,
+		OrderId:  orderID,
+		Status:   strings.TrimSpace(req.Status),
 	})
 	if err != nil {
 		return httpx.MapGRPCError(err)
