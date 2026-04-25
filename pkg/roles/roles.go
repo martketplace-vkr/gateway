@@ -1,12 +1,10 @@
 package roles
 
-import "math"
-
 const (
 	Client = 1
 	Vendor = 1 << 1
+	Admin  = 1 << 2
 	All    = Client | Vendor
-	Admin  = math.MaxInt64
 )
 
 const (
