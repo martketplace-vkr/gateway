@@ -14,9 +14,6 @@ import (
 	userclient "github.com/martketplace-vkr/user/pkg/api/grpc/v1/client"
 )
 
-const adminSessionKey = "marketplace_admin_session"
-const vendorSessionKey = "marketplace_vendor_session"
-
 type Handler struct {
 	authClient       authclient.AuthClientServiceClient
 	adminAuthClient  authadmin.AuthAdminServiceClient
@@ -186,7 +183,7 @@ func (h *Handler) AdminLogin(c *fiber.Ctx) error {
 		return httpx.MapGRPCError(err)
 	}
 
-	h.setSessionCookie(c, adminSessionKey, resp.GetRefreshToken())
+	h.setSessionCookie(c, consts.AdminSessionKey, resp.GetRefreshToken())
 
 	return httpx.WriteProtoJSON(c, resp)
 }
@@ -199,7 +196,7 @@ func (h *Handler) AdminRefresh(c *fiber.Ctx) error {
 		}
 	}
 
-	refreshToken := resolveRefreshToken(req.RefreshToken, c.Cookies(adminSessionKey))
+	refreshToken := resolveRefreshToken(req.RefreshToken, c.Cookies(consts.AdminSessionKey))
 	if refreshToken == "" {
 		return fiber.ErrUnauthorized
 	}
@@ -214,7 +211,7 @@ func (h *Handler) AdminRefresh(c *fiber.Ctx) error {
 		return httpx.MapGRPCError(err)
 	}
 
-	h.setSessionCookie(c, adminSessionKey, resp.GetRefreshToken())
+	h.setSessionCookie(c, consts.AdminSessionKey, resp.GetRefreshToken())
 
 	return httpx.WriteProtoJSON(c, resp)
 }
@@ -227,7 +224,7 @@ func (h *Handler) AdminLogout(c *fiber.Ctx) error {
 		}
 	}
 
-	refreshToken := resolveRefreshToken(req.RefreshToken, c.Cookies(adminSessionKey))
+	refreshToken := resolveRefreshToken(req.RefreshToken, c.Cookies(consts.AdminSessionKey))
 	if refreshToken == "" {
 		return fiber.ErrUnauthorized
 	}
@@ -242,7 +239,7 @@ func (h *Handler) AdminLogout(c *fiber.Ctx) error {
 		return httpx.MapGRPCError(err)
 	}
 
-	h.clearSessionCookie(c, adminSessionKey)
+	h.clearSessionCookie(c, consts.AdminSessionKey)
 
 	return httpx.WriteProtoJSON(c, resp)
 }
@@ -284,7 +281,7 @@ func (h *Handler) VendorLogin(c *fiber.Ctx) error {
 		return httpx.MapGRPCError(err)
 	}
 
-	h.setSessionCookie(c, vendorSessionKey, resp.GetRefreshToken())
+	h.setSessionCookie(c, consts.VendorSessionKey, resp.GetRefreshToken())
 
 	return httpx.WriteProtoJSON(c, resp)
 }
@@ -297,7 +294,7 @@ func (h *Handler) VendorRefresh(c *fiber.Ctx) error {
 		}
 	}
 
-	refreshToken := resolveRefreshToken(req.RefreshToken, c.Cookies(vendorSessionKey))
+	refreshToken := resolveRefreshToken(req.RefreshToken, c.Cookies(consts.VendorSessionKey))
 	if refreshToken == "" {
 		return fiber.ErrUnauthorized
 	}
@@ -312,7 +309,7 @@ func (h *Handler) VendorRefresh(c *fiber.Ctx) error {
 		return httpx.MapGRPCError(err)
 	}
 
-	h.setSessionCookie(c, vendorSessionKey, resp.GetRefreshToken())
+	h.setSessionCookie(c, consts.VendorSessionKey, resp.GetRefreshToken())
 
 	return httpx.WriteProtoJSON(c, resp)
 }
@@ -325,7 +322,7 @@ func (h *Handler) VendorLogout(c *fiber.Ctx) error {
 		}
 	}
 
-	refreshToken := resolveRefreshToken(req.RefreshToken, c.Cookies(vendorSessionKey))
+	refreshToken := resolveRefreshToken(req.RefreshToken, c.Cookies(consts.VendorSessionKey))
 	if refreshToken == "" {
 		return fiber.ErrUnauthorized
 	}
@@ -340,7 +337,7 @@ func (h *Handler) VendorLogout(c *fiber.Ctx) error {
 		return httpx.MapGRPCError(err)
 	}
 
-	h.clearSessionCookie(c, vendorSessionKey)
+	h.clearSessionCookie(c, consts.VendorSessionKey)
 
 	return httpx.WriteProtoJSON(c, resp)
 }
