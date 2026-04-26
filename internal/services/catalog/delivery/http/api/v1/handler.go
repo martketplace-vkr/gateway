@@ -149,7 +149,10 @@ func (h *Handler) ListProducts(c *fiber.Ctx) error {
 		return httpx.MapGRPCError(err)
 	}
 
-	return httpx.WriteProtoJSON(c, resp)
+	return c.JSON(models.ListProductsResponse{
+		Products:      mapProducts(resp.GetProducts()),
+		NextPageToken: resp.GetNextPageToken(),
+	})
 }
 
 func (h *Handler) GetProduct(c *fiber.Ctx) error {
@@ -168,7 +171,9 @@ func (h *Handler) GetProduct(c *fiber.Ctx) error {
 		return httpx.MapGRPCError(err)
 	}
 
-	return httpx.WriteProtoJSON(c, resp)
+	return c.JSON(models.GetProductResponse{
+		Product: mapProduct(resp.GetProduct()),
+	})
 }
 
 func (h *Handler) CreateProduct(c *fiber.Ctx) error {
@@ -186,20 +191,22 @@ func (h *Handler) CreateProduct(c *fiber.Ctx) error {
 	defer cancel()
 
 	resp, err := h.catalogVendorClient.CreateProduct(ctx, &catalogvendor.CreateProductRequest{
-		VendorId:    user.ID,
-		CategoryId:  req.CategoryID,
-		Name:        req.Name,
-		Description: req.Description,
-		Price:       req.Price,
-		StockCount:  req.StockCount,
-		Attributes:  mapProductAttributes(req.Attributes),
-		Images:      mapProductImages(req.Images),
+		VendorId:        user.ID,
+		CategoryId:      req.CategoryID,
+		Name:            req.Name,
+		Description:     req.Description,
+		Price:           req.Price,
+		StockCount:      req.StockCount,
+		Characteristics: mapProductSections(req.Attributes),
+		Images:          mapProductImages(req.Images),
 	})
 	if err != nil {
 		return httpx.MapGRPCError(err)
 	}
 
-	return httpx.WriteProtoJSON(c, resp)
+	return c.JSON(models.GetProductResponse{
+		Product: mapProduct(resp.GetProduct()),
+	})
 }
 
 func (h *Handler) UpdateProduct(c *fiber.Ctx) error {
@@ -222,21 +229,23 @@ func (h *Handler) UpdateProduct(c *fiber.Ctx) error {
 	defer cancel()
 
 	resp, err := h.catalogVendorClient.UpdateProduct(ctx, &catalogvendor.UpdateProductRequest{
-		ProductId:   productID,
-		VendorId:    user.ID,
-		CategoryId:  req.CategoryID,
-		Name:        req.Name,
-		Description: req.Description,
-		Price:       req.Price,
-		StockCount:  req.StockCount,
-		Attributes:  mapProductAttributes(req.Attributes),
-		Images:      mapProductImages(req.Images),
+		ProductId:       productID,
+		VendorId:        user.ID,
+		CategoryId:      req.CategoryID,
+		Name:            req.Name,
+		Description:     req.Description,
+		Price:           req.Price,
+		StockCount:      req.StockCount,
+		Characteristics: mapProductSections(req.Attributes),
+		Images:          mapProductImages(req.Images),
 	})
 	if err != nil {
 		return httpx.MapGRPCError(err)
 	}
 
-	return httpx.WriteProtoJSON(c, resp)
+	return c.JSON(models.GetProductResponse{
+		Product: mapProduct(resp.GetProduct()),
+	})
 }
 
 func (h *Handler) GetVendorProducts(c *fiber.Ctx) error {
@@ -255,15 +264,29 @@ func (h *Handler) GetVendorProducts(c *fiber.Ctx) error {
 		return httpx.MapGRPCError(err)
 	}
 
-	return httpx.WriteProtoJSON(c, resp)
+	return c.JSON(models.ListProductsResponse{
+		Products: mapProducts(resp.GetProducts()),
+	})
 }
 
-func mapProductAttributes(attributes []models.ProductAttributeInput) []*catalogdomain.ProductAttributeInput {
+func mapProductSections(sections []models.ProductAttributeSectionInput) []*catalogdomain.ProductCharacteristicInput {
+	result := make([]*catalogdomain.ProductCharacteristicInput, 0, len(sections))
+	for _, section := range sections {
+		result = append(result, &catalogdomain.ProductCharacteristicInput{
+			Title:      strings.TrimSpace(section.Title),
+			Attributes: mapSectionAttributes(section.Attributes),
+		})
+	}
+
+	return result
+}
+
+func mapSectionAttributes(attributes []models.ProductAttributeInput) []*catalogdomain.ProductAttributeInput {
 	result := make([]*catalogdomain.ProductAttributeInput, 0, len(attributes))
 	for _, attribute := range attributes {
 		result = append(result, &catalogdomain.ProductAttributeInput{
-			Name:  attribute.Name,
-			Value: attribute.Value,
+			Name:  strings.TrimSpace(attribute.Key),
+			Value: strings.TrimSpace(attribute.Value),
 		})
 	}
 
@@ -280,6 +303,94 @@ func mapProductImages(images []models.ProductImageInput) []*catalogdomain.Produc
 	}
 
 	return result
+}
+
+func mapProducts(products []*catalogdomain.Product) []models.ProductResponse {
+	result := make([]models.ProductResponse, 0, len(products))
+	for _, product := range products {
+		if mapped := mapProduct(product); mapped != nil {
+			result = append(result, *mapped)
+		}
+	}
+
+	return result
+}
+
+func mapProduct(product *catalogdomain.Product) *models.ProductResponse {
+	if product == nil {
+		return nil
+	}
+
+	return &models.ProductResponse{
+		ID:          strconv.FormatInt(product.GetId(), 10),
+		VendorID:    strconv.FormatInt(product.GetVendorId(), 10),
+		CategoryID:  strconv.FormatInt(product.GetCategoryId(), 10),
+		Name:        product.GetName(),
+		Description: product.GetDescription(),
+		Price:       product.GetPrice(),
+		StockCount:  product.GetStockCount(),
+		Attributes:  mapProductAttributeSections(product.GetCharacteristics()),
+		Images:      mapProductImageResponses(product.GetImages()),
+		CreatedAt:   mapTimestamp(product.GetCreatedAt()),
+		UpdatedAt:   mapTimestamp(product.GetUpdatedAt()),
+	}
+}
+
+func mapProductAttributeSections(sections []*catalogdomain.ProductCharacteristic) []models.ProductAttributeSectionResponse {
+	result := make([]models.ProductAttributeSectionResponse, 0, len(sections))
+	for _, section := range sections {
+		if section == nil {
+			continue
+		}
+
+		result = append(result, models.ProductAttributeSectionResponse{
+			Title:      section.GetTitle(),
+			Attributes: mapSectionAttributeResponses(section.GetAttributes()),
+		})
+	}
+
+	return result
+}
+
+func mapSectionAttributeResponses(attributes []*catalogdomain.ProductAttribute) []models.ProductAttributeResponse {
+	result := make([]models.ProductAttributeResponse, 0, len(attributes))
+	for _, attribute := range attributes {
+		if attribute == nil {
+			continue
+		}
+
+		result = append(result, models.ProductAttributeResponse{
+			Key:   attribute.GetName(),
+			Value: attribute.GetValue(),
+		})
+	}
+
+	return result
+}
+
+func mapProductImageResponses(images []*catalogdomain.ProductImage) []models.ProductImageResponse {
+	result := make([]models.ProductImageResponse, 0, len(images))
+	for _, image := range images {
+		if image == nil {
+			continue
+		}
+
+		result = append(result, models.ProductImageResponse{
+			ID:     strconv.FormatInt(image.GetId(), 10),
+			URL:    image.GetUrl(),
+			IsMain: image.GetIsMain(),
+		})
+	}
+
+	return result
+}
+
+func mapTimestamp(ts interface{ AsTime() time.Time }) string {
+	if ts == nil {
+		return ""
+	}
+
+	return ts.AsTime().UTC().Format(time.RFC3339)
 }
 
 func parseOptionalInt64Query(c *fiber.Ctx, key string) (int64, bool, error) {
