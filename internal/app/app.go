@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 
+	analyticsvendor "github.com/martketplace-vkr/analytics/pkg/api/grpc/v1/vendor"
 	authadmin "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/admin"
 	authclient "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/client"
 	authvendor "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/vendor"
@@ -20,6 +21,7 @@ import (
 	"github.com/martketplace-vkr/gateway/config"
 	serverCmp "github.com/martketplace-vkr/gateway/internal/app/cmps/server"
 	"github.com/martketplace-vkr/gateway/internal/common/middleware"
+	analyticsv1 "github.com/martketplace-vkr/gateway/internal/services/analytics/delivery/http/api/v1"
 	authv1 "github.com/martketplace-vkr/gateway/internal/services/auth/delivery/http/api/v1"
 	balancev1 "github.com/martketplace-vkr/gateway/internal/services/balance/delivery/http/api/v1"
 	cartv1 "github.com/martketplace-vkr/gateway/internal/services/cart/delivery/http/api/v1"
@@ -62,6 +64,12 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	}
 	defer orderConn.Close()
 
+	analyticsConn, err := dialGRPC(ctx, cfg.Analytics)
+	if err != nil {
+		return err
+	}
+	defer analyticsConn.Close()
+
 	userConn, err := dialGRPC(ctx, cfg.User)
 	if err != nil {
 		return err
@@ -89,6 +97,7 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	catalogVendorCli := catalogvendor.NewCatalogVendorServiceClient(catalogConn)
 	orderCli := orderclient.NewOrderClientServiceClient(orderConn)
 	orderVendorCli := ordervendor.NewOrderVendorServiceClient(orderConn)
+	analyticsVendorCli := analyticsvendor.NewAnalyticsVendorServiceClient(analyticsConn)
 	userCli := userclient.NewUserClientServiceClient(userConn)
 	balanceCli := balanceclient.NewBalanceClientServiceClient(balanceConn)
 	mediaCli := mediaclient.NewMediaServiceClient(mediaConn)
@@ -114,6 +123,11 @@ func Run(ctx context.Context, cfg *config.Config) error {
 		authMiddleware,
 		orderv1.New(orderCli, orderVendorCli, cartCli, catalogCli, cfg.Order.Timeout.Duration),
 	)
+	analyticsBinder := analyticsv1.NewBinder(
+		server,
+		authMiddleware,
+		analyticsv1.New(analyticsVendorCli, cfg.Analytics.Timeout.Duration),
+	)
 	userBinder := userv1.NewBinder(
 		server,
 		authMiddleware,
@@ -135,6 +149,7 @@ func Run(ctx context.Context, cfg *config.Config) error {
 		cartBinder,
 		catalogBinder,
 		orderBinder,
+		analyticsBinder,
 		userBinder,
 		balanceBinder,
 		mediaBinder,

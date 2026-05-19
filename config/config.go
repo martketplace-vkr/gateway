@@ -19,6 +19,7 @@ type Config struct {
 	Cart      GRPCClient       `validate:"required"`
 	Catalog   GRPCClient       `validate:"required"`
 	Order     GRPCClient       `validate:"required"`
+	Analytics GRPCClient       `validate:"required"`
 	User      GRPCClient       `validate:"required"`
 	Balance   GRPCClient       `validate:"required"`
 	Media     GRPCClient       `validate:"required"`

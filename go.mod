@@ -4,6 +4,7 @@ go 1.25.1
 
 require (
 	github.com/gofiber/fiber/v2 v2.52.12
+	github.com/martketplace-vkr/analytics v0.0.0-20260519155347-a50a0700e74b
 	github.com/martketplace-vkr/auth v1.0.0-rc002
 	github.com/martketplace-vkr/balance v1.0.0-rc002.0.20260415182426-a55b81d1447e
 	github.com/martketplace-vkr/cart v1.0.0-rc002.0.20260519114019-e519eeb93ec0
