@@ -236,6 +236,31 @@ func (h *Handler) ReplyReview(c *fiber.Ctx) error {
 	return httpx.WriteProtoJSON(c, resp)
 }
 
+func (h *Handler) DeleteReviewReply(c *fiber.Ctx) error {
+	user, err := middleware.CurrentUser(c)
+	if err != nil {
+		return err
+	}
+
+	reviewID, err := parsePositiveIntParam(c, "review_id")
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	resp, err := h.vendor.DeleteReviewReply(ctx, &reviewvendor.DeleteReviewReplyRequest{
+		VendorId: user.ID,
+		ReviewId: reviewID,
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	return httpx.WriteProtoJSON(c, resp)
+}
+
 func (h *Handler) DisputeReview(c *fiber.Ctx) error {
 	user, err := middleware.CurrentUser(c)
 	if err != nil {
@@ -259,6 +284,31 @@ func (h *Handler) DisputeReview(c *fiber.Ctx) error {
 		VendorId: user.ID,
 		ReviewId: reviewID,
 		Reason:   strings.TrimSpace(req.Reason),
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	return httpx.WriteProtoJSON(c, resp)
+}
+
+func (h *Handler) CancelReviewDispute(c *fiber.Ctx) error {
+	user, err := middleware.CurrentUser(c)
+	if err != nil {
+		return err
+	}
+
+	reviewID, err := parsePositiveIntParam(c, "review_id")
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	resp, err := h.vendor.CancelReviewDispute(ctx, &reviewvendor.CancelReviewDisputeRequest{
+		VendorId: user.ID,
+		ReviewId: reviewID,
 	})
 	if err != nil {
 		return httpx.MapGRPCError(err)

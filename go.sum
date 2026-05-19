@@ -146,6 +146,8 @@ github.com/martketplace-vkr/review v0.0.0-20260519181526-fd336a4435ad h1:tOVTj3H
 github.com/martketplace-vkr/review v0.0.0-20260519181526-fd336a4435ad/go.mod h1:aC/1+UfhxPtDS3NJch8QSsjnC7MSqOygZZNkphZkeMg=
 github.com/martketplace-vkr/review v0.0.0-20260519181758-77673597d5ba h1:kVvDn1K8w/109eEAuwcQDD8jig4qcHLLx9wTygER/pU=
 github.com/martketplace-vkr/review v0.0.0-20260519181758-77673597d5ba/go.mod h1:aC/1+UfhxPtDS3NJch8QSsjnC7MSqOygZZNkphZkeMg=
+github.com/martketplace-vkr/review v0.0.0-20260519205041-38b1d3d758d9 h1:24iEXRJYMq+4sjT69fVotPJAEJV6UlRaMlWkkE5ow3Q=
+github.com/martketplace-vkr/review v0.0.0-20260519205041-38b1d3d758d9/go.mod h1:aC/1+UfhxPtDS3NJch8QSsjnC7MSqOygZZNkphZkeMg=
 github.com/martketplace-vkr/user v1.0.0-rc002 h1:zNf8sUenpgHviSa/p+Jx9pd7aG1QGj8IZo1Au3YRdVs=
 github.com/martketplace-vkr/user v1.0.0-rc002/go.mod h1:3VoFaLsUmUO8NuqSZZEVDftMffODuMh8dPrizIuX9OU=
 github.com/mattn/go-colorable v0.1.13/go.mod h1:7S9/ev0klgBDR4GtXTXX8a3vIGJpMovkB8vQcUbaXHg=

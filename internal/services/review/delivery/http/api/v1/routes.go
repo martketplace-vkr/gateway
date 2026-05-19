@@ -45,7 +45,9 @@ func (b *Binder) bind(router fiber.Router) {
 	vendorReviews.Get("", b.handler.ListVendorReviews)
 	vendorReviews.Get("/", b.handler.ListVendorReviews)
 	vendorReviews.Post("/:review_id/reply", b.handler.ReplyReview)
+	vendorReviews.Delete("/:review_id/reply", b.handler.DeleteReviewReply)
 	vendorReviews.Post("/:review_id/disputes", b.handler.DisputeReview)
+	vendorReviews.Delete("/:review_id/disputes", b.handler.CancelReviewDispute)
 
 	adminReviews := router.Group("/admin/reviews", b.auth.Require(roles.Admin))
 	adminReviews.Get("/disputes", b.handler.ListReviewDisputes)
