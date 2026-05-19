@@ -31,8 +31,10 @@ func (b *Binder) BindRoutes(_ context.Context) {
 
 func (b *Binder) bind(router fiber.Router) {
 	router.Get("/products/:product_id/reviews", b.handler.ListProductReviews)
+	router.Get("/products/:product_id/reviews/my", b.auth.Require(roles.Client), b.handler.GetMyProductReview)
 	router.Post("/products/:product_id/reviews", b.auth.Require(roles.Client), b.handler.CreateReview)
 	router.Get("/catalog/products/:product_id/reviews", b.handler.ListProductReviews)
+	router.Get("/catalog/products/:product_id/reviews/my", b.auth.Require(roles.Client), b.handler.GetMyProductReview)
 	router.Post("/catalog/products/:product_id/reviews", b.auth.Require(roles.Client), b.handler.CreateReview)
 
 	reviews := router.Group("/reviews", b.auth.Require(roles.Client))

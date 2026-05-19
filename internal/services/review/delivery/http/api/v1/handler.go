@@ -54,6 +54,41 @@ func (h *Handler) ListProductReviews(c *fiber.Ctx) error {
 	return httpx.WriteProtoJSON(c, resp)
 }
 
+func (h *Handler) GetMyProductReview(c *fiber.Ctx) error {
+	user, err := middleware.CurrentUser(c)
+	if err != nil {
+		return err
+	}
+
+	productID, err := parsePositiveIntParam(c, "product_id")
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	resp, err := h.client.ListProductReviews(ctx, &reviewclient.ListProductReviewsRequest{
+		ProductId: productID,
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	for _, review := range resp.GetReviews() {
+		if review.GetAuthorUserId() == user.ID {
+			return httpx.WriteProtoJSON(c, &reviewclient.CreateReviewResponse{
+				Review:  review,
+				Summary: resp.GetSummary(),
+			})
+		}
+	}
+
+	return httpx.WriteProtoJSON(c, &reviewclient.CreateReviewResponse{
+		Summary: resp.GetSummary(),
+	})
+}
+
 func (h *Handler) CreateReview(c *fiber.Ctx) error {
 	user, err := middleware.CurrentUser(c)
 	if err != nil {
