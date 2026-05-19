@@ -7,6 +7,7 @@ import (
 	authclient "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/client"
 	authvendor "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/vendor"
 	balanceclient "github.com/martketplace-vkr/balance/pkg/api/grpc/v1/client"
+	cartclient "github.com/martketplace-vkr/cart/pkg/api/grpc/v1/client"
 	catalogadmin "github.com/martketplace-vkr/catalog/pkg/api/grpc/v1/admin"
 	catalogclient "github.com/martketplace-vkr/catalog/pkg/api/grpc/v1/client"
 	catalogvendor "github.com/martketplace-vkr/catalog/pkg/api/grpc/v1/vendor"
@@ -21,6 +22,7 @@ import (
 	"github.com/martketplace-vkr/gateway/internal/common/middleware"
 	authv1 "github.com/martketplace-vkr/gateway/internal/services/auth/delivery/http/api/v1"
 	balancev1 "github.com/martketplace-vkr/gateway/internal/services/balance/delivery/http/api/v1"
+	cartv1 "github.com/martketplace-vkr/gateway/internal/services/cart/delivery/http/api/v1"
 	catalogv1 "github.com/martketplace-vkr/gateway/internal/services/catalog/delivery/http/api/v1"
 	mediav1 "github.com/martketplace-vkr/gateway/internal/services/media/delivery/http/api/v1"
 	orderv1 "github.com/martketplace-vkr/gateway/internal/services/order/delivery/http/api/v1"
@@ -47,6 +49,12 @@ func Run(ctx context.Context, cfg *config.Config) error {
 		return err
 	}
 	defer catalogConn.Close()
+
+	cartConn, err := dialGRPC(ctx, cfg.Cart)
+	if err != nil {
+		return err
+	}
+	defer cartConn.Close()
 
 	orderConn, err := dialGRPC(ctx, cfg.Order)
 	if err != nil {
@@ -75,6 +83,7 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	adminAuthCli := authadmin.NewAuthAdminServiceClient(authConn)
 	authCli := authclient.NewAuthClientServiceClient(authConn)
 	vendorAuthCli := authvendor.NewAuthVendorServiceClient(authConn)
+	cartCli := cartclient.NewCartClientServiceClient(cartConn)
 	catalogAdminCli := catalogadmin.NewCatalogAdminServiceClient(catalogConn)
 	catalogCli := catalogclient.NewCatalogClientServiceClient(catalogConn)
 	catalogVendorCli := catalogvendor.NewCatalogVendorServiceClient(catalogConn)
@@ -95,10 +104,15 @@ func Run(ctx context.Context, cfg *config.Config) error {
 		authMiddleware,
 		catalogv1.New(catalogCli, catalogAdminCli, catalogVendorCli, cfg.Catalog.Timeout.Duration),
 	)
+	cartBinder := cartv1.NewBinder(
+		server,
+		authMiddleware,
+		cartv1.New(cartCli, cfg.Cart.Timeout.Duration),
+	)
 	orderBinder := orderv1.NewBinder(
 		server,
 		authMiddleware,
-		orderv1.New(orderCli, orderVendorCli, cfg.Order.Timeout.Duration),
+		orderv1.New(orderCli, orderVendorCli, cartCli, catalogCli, cfg.Order.Timeout.Duration),
 	)
 	userBinder := userv1.NewBinder(
 		server,
@@ -118,6 +132,7 @@ func Run(ctx context.Context, cfg *config.Config) error {
 
 	binder := routes.NewBinder(
 		authBinder,
+		cartBinder,
 		catalogBinder,
 		orderBinder,
 		userBinder,

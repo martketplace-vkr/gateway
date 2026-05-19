@@ -6,27 +6,36 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	cartclient "github.com/martketplace-vkr/cart/pkg/api/grpc/v1/client"
+	catalogclient "github.com/martketplace-vkr/catalog/pkg/api/grpc/v1/client"
 	"github.com/martketplace-vkr/gateway/internal/common/httpx"
 	"github.com/martketplace-vkr/gateway/internal/common/middleware"
 	"github.com/martketplace-vkr/gateway/internal/services/order/models"
 	orderclient "github.com/martketplace-vkr/order/pkg/api/grpc/v1/client"
 	ordervendor "github.com/martketplace-vkr/order/pkg/api/grpc/v1/vendor"
+	"google.golang.org/grpc/codes"
 )
 
 type Handler struct {
 	orderClient       orderclient.OrderClientServiceClient
 	orderVendorClient ordervendor.OrderVendorServiceClient
+	cartClient        cartclient.CartClientServiceClient
+	catalogClient     catalogclient.CatalogClientServiceClient
 	timeout           time.Duration
 }
 
 func New(
 	orderClient orderclient.OrderClientServiceClient,
 	orderVendorClient ordervendor.OrderVendorServiceClient,
+	cartClient cartclient.CartClientServiceClient,
+	catalogClient catalogclient.CatalogClientServiceClient,
 	timeout time.Duration,
 ) *Handler {
 	return &Handler{
 		orderClient:       orderClient,
 		orderVendorClient: orderVendorClient,
+		cartClient:        cartClient,
+		catalogClient:     catalogClient,
 		timeout:           timeout,
 	}
 }
@@ -54,6 +63,10 @@ func (h *Handler) Checkout(c *fiber.Ctx) error {
 		}
 	}
 
+	if err := h.syncCheckoutCart(c, req.ProductIDs); err != nil {
+		return err
+	}
+
 	ctx, cancel := httpx.RPCContext(c, h.timeout)
 	defer cancel()
 
@@ -68,6 +81,53 @@ func (h *Handler) Checkout(c *fiber.Ctx) error {
 	}
 
 	return httpx.WriteProtoJSON(c, resp)
+}
+
+func (h *Handler) syncCheckoutCart(c *fiber.Ctx, productIDs []int64) error {
+	user, err := middleware.CurrentUser(c)
+	if err != nil {
+		return err
+	}
+
+	quantities := make(map[int64]uint32, len(productIDs))
+	for _, productID := range productIDs {
+		quantities[productID]++
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	for productID, quantity := range quantities {
+		_, err = h.cartClient.RemoveItem(ctx, &cartclient.RemoveItemRequest{
+			UserId:    user.ID,
+			ProductId: productID,
+		})
+		if err != nil && !httpx.IsGRPCCode(err, codes.NotFound) {
+			return httpx.MapGRPCError(err)
+		}
+
+		productResp, err := h.catalogClient.GetProduct(ctx, &catalogclient.GetProductRequest{
+			ProductId: productID,
+		})
+		if err != nil {
+			return httpx.MapGRPCError(err)
+		}
+		if productResp.GetProduct() == nil || productResp.GetProduct().GetVendorId() <= 0 {
+			return fiber.NewError(fiber.StatusPreconditionFailed, "product vendor_id is required")
+		}
+
+		_, err = h.cartClient.AddItem(ctx, &cartclient.AddItemRequest{
+			UserId:    user.ID,
+			ProductId: productID,
+			VendorId:  productResp.GetProduct().GetVendorId(),
+			Quantity:  quantity,
+		})
+		if err != nil {
+			return httpx.MapGRPCError(err)
+		}
+	}
+
+	return nil
 }
 
 func (h *Handler) GetOrderList(c *fiber.Ctx) error {
