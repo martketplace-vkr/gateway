@@ -23,4 +23,5 @@ type Config struct {
 	User      GRPCClient       `validate:"required"`
 	Balance   GRPCClient       `validate:"required"`
 	Media     GRPCClient       `validate:"required"`
+	Review    GRPCClient       `validate:"required"`
 }

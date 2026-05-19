@@ -15,6 +15,9 @@ import (
 	mediaclient "github.com/martketplace-vkr/media/pkg/api/grpc/v1/media"
 	orderclient "github.com/martketplace-vkr/order/pkg/api/grpc/v1/client"
 	ordervendor "github.com/martketplace-vkr/order/pkg/api/grpc/v1/vendor"
+	reviewadmin "github.com/martketplace-vkr/review/pkg/api/grpc/v1/admin"
+	reviewclient "github.com/martketplace-vkr/review/pkg/api/grpc/v1/client"
+	reviewvendor "github.com/martketplace-vkr/review/pkg/api/grpc/v1/vendor"
 	userclient "github.com/martketplace-vkr/user/pkg/api/grpc/v1/client"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -28,6 +31,7 @@ import (
 	catalogv1 "github.com/martketplace-vkr/gateway/internal/services/catalog/delivery/http/api/v1"
 	mediav1 "github.com/martketplace-vkr/gateway/internal/services/media/delivery/http/api/v1"
 	orderv1 "github.com/martketplace-vkr/gateway/internal/services/order/delivery/http/api/v1"
+	reviewv1 "github.com/martketplace-vkr/gateway/internal/services/review/delivery/http/api/v1"
 	userv1 "github.com/martketplace-vkr/gateway/internal/services/user/delivery/http/api/v1"
 	"github.com/martketplace-vkr/gateway/pkg/routes"
 
@@ -88,6 +92,12 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	}
 	defer mediaConn.Close()
 
+	reviewConn, err := dialGRPC(ctx, cfg.Review)
+	if err != nil {
+		return err
+	}
+	defer reviewConn.Close()
+
 	adminAuthCli := authadmin.NewAuthAdminServiceClient(authConn)
 	authCli := authclient.NewAuthClientServiceClient(authConn)
 	vendorAuthCli := authvendor.NewAuthVendorServiceClient(authConn)
@@ -101,6 +111,9 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	userCli := userclient.NewUserClientServiceClient(userConn)
 	balanceCli := balanceclient.NewBalanceClientServiceClient(balanceConn)
 	mediaCli := mediaclient.NewMediaServiceClient(mediaConn)
+	reviewClientCli := reviewclient.NewReviewClientServiceClient(reviewConn)
+	reviewVendorCli := reviewvendor.NewReviewVendorServiceClient(reviewConn)
+	reviewAdminCli := reviewadmin.NewReviewAdminServiceClient(reviewConn)
 
 	authMiddleware := middleware.NewAuth(authCli, adminAuthCli, vendorAuthCli, cfg.Auth.Timeout.Duration)
 
@@ -143,6 +156,11 @@ func Run(ctx context.Context, cfg *config.Config) error {
 		authMiddleware,
 		mediav1.New(mediaCli, cfg.Media.Timeout.Duration),
 	)
+	reviewBinder := reviewv1.NewBinder(
+		server,
+		authMiddleware,
+		reviewv1.New(reviewClientCli, reviewVendorCli, reviewAdminCli, cfg.Review.Timeout.Duration),
+	)
 
 	binder := routes.NewBinder(
 		authBinder,
@@ -153,6 +171,7 @@ func Run(ctx context.Context, cfg *config.Config) error {
 		userBinder,
 		balanceBinder,
 		mediaBinder,
+		reviewBinder,
 	)
 
 	httpServer := http.NewWithBinder(

@@ -138,8 +138,14 @@ github.com/martketplace-vkr/media v1.0.0-rc001 h1:pZY7S6NwCOIIrv4wzjOxMhn2A5G2VD
 github.com/martketplace-vkr/media v1.0.0-rc001/go.mod h1:P/sxKyTJQ8bcRpyL3AOPT9iK+VrwxHzfeh7y8UkXZ3g=
 github.com/martketplace-vkr/order v1.0.0-rc001 h1:yl59CVSASSU9gHys6SpXhBohv3BKMFJbC9lnGAXmYWc=
 github.com/martketplace-vkr/order v1.0.0-rc001/go.mod h1:kHGzLAYXnBosQneQ/Yny5HtRnkk9gdcM3WEcCq1rr7U=
+github.com/martketplace-vkr/order v1.0.0-rc003.0.20260519181117-6fd0b67ea288 h1:fVjF7MTgbKax3G5FVOz+oTNQmD2dw5RiQXKwMBP+g6E=
+github.com/martketplace-vkr/order v1.0.0-rc003.0.20260519181117-6fd0b67ea288/go.mod h1:rLQBeNgMu6VxI7TwNbmUr/9T835tXfAJFDUnFEkqyCg=
 github.com/martketplace-vkr/pkg v0.0.1 h1:DW+CwmXmXzwDE2yj9vQBMRaEQRHcUvf1VaJcqIc4Ewc=
 github.com/martketplace-vkr/pkg v0.0.1/go.mod h1:L3zsndZXrjEj5zSoYecSAyswehEuCtmgtsTXRXzCSBE=
+github.com/martketplace-vkr/review v0.0.0-20260519181526-fd336a4435ad h1:tOVTj3Hw5pR1DyFPuZn8g5KojG50bd54J6asIC8EUfY=
+github.com/martketplace-vkr/review v0.0.0-20260519181526-fd336a4435ad/go.mod h1:aC/1+UfhxPtDS3NJch8QSsjnC7MSqOygZZNkphZkeMg=
+github.com/martketplace-vkr/review v0.0.0-20260519181758-77673597d5ba h1:kVvDn1K8w/109eEAuwcQDD8jig4qcHLLx9wTygER/pU=
+github.com/martketplace-vkr/review v0.0.0-20260519181758-77673597d5ba/go.mod h1:aC/1+UfhxPtDS3NJch8QSsjnC7MSqOygZZNkphZkeMg=
 github.com/martketplace-vkr/user v1.0.0-rc002 h1:zNf8sUenpgHviSa/p+Jx9pd7aG1QGj8IZo1Au3YRdVs=
 github.com/martketplace-vkr/user v1.0.0-rc002/go.mod h1:3VoFaLsUmUO8NuqSZZEVDftMffODuMh8dPrizIuX9OU=
 github.com/mattn/go-colorable v0.1.13/go.mod h1:7S9/ev0klgBDR4GtXTXX8a3vIGJpMovkB8vQcUbaXHg=
