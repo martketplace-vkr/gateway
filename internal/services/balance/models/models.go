@@ -11,6 +11,11 @@ type CreateTopUpRequest struct {
 	Network        string `json:"network"`
 }
 
+type CreateRubTopUpRequest struct {
+	Amount string `json:"amount"`
+	Method string `json:"method"`
+}
+
 type CreateWithdrawalRequest struct {
 	Amount          string `json:"amount"`
 	CurrencyCode    int64  `json:"currency_code"`

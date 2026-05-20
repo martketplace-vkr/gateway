@@ -7,6 +7,7 @@ import (
 	authadmin "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/admin"
 	authclient "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/client"
 	authvendor "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/vendor"
+	balanceadmin "github.com/martketplace-vkr/balance/pkg/api/grpc/v1/admin"
 	balanceclient "github.com/martketplace-vkr/balance/pkg/api/grpc/v1/client"
 	cartclient "github.com/martketplace-vkr/cart/pkg/api/grpc/v1/client"
 	catalogadmin "github.com/martketplace-vkr/catalog/pkg/api/grpc/v1/admin"
@@ -110,6 +111,7 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	analyticsVendorCli := analyticsvendor.NewAnalyticsVendorServiceClient(analyticsConn)
 	userCli := userclient.NewUserClientServiceClient(userConn)
 	balanceCli := balanceclient.NewBalanceClientServiceClient(balanceConn)
+	balanceAdminCli := balanceadmin.NewBalanceAdminServiceClient(balanceConn)
 	mediaCli := mediaclient.NewMediaServiceClient(mediaConn)
 	reviewClientCli := reviewclient.NewReviewClientServiceClient(reviewConn)
 	reviewVendorCli := reviewvendor.NewReviewVendorServiceClient(reviewConn)
@@ -149,7 +151,7 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	balanceBinder := balancev1.NewBinder(
 		server,
 		authMiddleware,
-		balancev1.New(balanceCli, cfg.Balance.Timeout.Duration),
+		balancev1.New(balanceCli, balanceAdminCli, cfg.Balance.Timeout.Duration, cfg.MockProvider.InternalURL, cfg.MockProvider.WebhookSecret),
 	)
 	mediaBinder := mediav1.NewBinder(
 		server,

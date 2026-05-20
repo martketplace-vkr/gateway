@@ -30,6 +30,8 @@ func (b *Binder) BindRoutes(_ context.Context) {
 }
 
 func (b *Binder) bind(router fiber.Router) {
+	router.Post("/balance/webhooks/mock-provider", b.handler.HandleMockProviderWebhook)
+
 	balance := router.Group("/balance", b.auth.Require(roles.Client))
 
 	balance.Get("/wallet", b.handler.GetWallet)
@@ -37,8 +39,13 @@ func (b *Binder) bind(router fiber.Router) {
 	balance.Get("/transactions", b.handler.GetWalletTransactions)
 	balance.Post("/top-ups", b.handler.CreateTopUp)
 	balance.Post("/top-ups/crypto", b.handler.CreateCryptoTopUp)
+	balance.Post("/top-ups/rub", b.handler.CreateRubTopUp)
 	balance.Get("/top-ups", b.handler.GetTopUpList)
 	balance.Get("/top-ups/:top_up_id", b.handler.GetTopUp)
 	balance.Post("/withdrawals", b.handler.CreateWithdrawal)
 	balance.Get("/withdrawals/:withdrawal_id", b.handler.GetWithdrawal)
+
+	adminBalance := router.Group("/admin/balance", b.auth.Require(roles.Admin))
+	adminBalance.Get("/top-ups", b.handler.ListAdminTopUps)
+	adminBalance.Post("/top-ups/:external_id/confirm", b.handler.ConfirmAdminTopUp)
 }
