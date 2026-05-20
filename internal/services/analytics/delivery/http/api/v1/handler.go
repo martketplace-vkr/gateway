@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	analyticsadmin "github.com/martketplace-vkr/analytics/pkg/api/grpc/v1/admin"
 	analyticsvendor "github.com/martketplace-vkr/analytics/pkg/api/grpc/v1/vendor"
 	"github.com/martketplace-vkr/gateway/internal/common/httpx"
 	"github.com/martketplace-vkr/gateway/internal/common/middleware"
@@ -13,12 +14,14 @@ import (
 )
 
 type Handler struct {
+	analyticsAdminClient  analyticsadmin.AnalyticsAdminServiceClient
 	analyticsVendorClient analyticsvendor.AnalyticsVendorServiceClient
 	timeout               time.Duration
 }
 
-func New(analyticsVendorClient analyticsvendor.AnalyticsVendorServiceClient, timeout time.Duration) *Handler {
+func New(analyticsVendorClient analyticsvendor.AnalyticsVendorServiceClient, analyticsAdminClient analyticsadmin.AnalyticsAdminServiceClient, timeout time.Duration) *Handler {
 	return &Handler{
+		analyticsAdminClient:  analyticsAdminClient,
 		analyticsVendorClient: analyticsVendorClient,
 		timeout:               timeout,
 	}
@@ -155,6 +158,121 @@ func (h *Handler) ExportSalesReport(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).Send(resp.GetContent())
 }
 
+func (h *Handler) ListTariffs(c *fiber.Ctx) error {
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	resp, err := h.analyticsAdminClient.ListTariffs(ctx, &analyticsadmin.ListTariffsRequest{})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+	return httpx.WriteProtoJSON(c, resp)
+}
+
+func (h *Handler) CreateTariff(c *fiber.Ctx) error {
+	req := models.TariffRequest{}
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	resp, err := h.analyticsAdminClient.CreateTariff(ctx, &analyticsadmin.CreateTariffRequest{
+		Name:              req.Name,
+		CommissionPercent: req.CommissionPercent,
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+	return httpx.WriteProtoJSON(c, resp)
+}
+
+func (h *Handler) UpdateTariff(c *fiber.Ctx) error {
+	tariffID, err := parsePositiveInt64Param(c, "tariff_id")
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid tariff_id")
+	}
+
+	req := models.TariffRequest{}
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	resp, err := h.analyticsAdminClient.UpdateTariff(ctx, &analyticsadmin.UpdateTariffRequest{
+		TariffId:          tariffID,
+		Name:              req.Name,
+		CommissionPercent: req.CommissionPercent,
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+	return httpx.WriteProtoJSON(c, resp)
+}
+
+func (h *Handler) SetDefaultTariff(c *fiber.Ctx) error {
+	tariffID, err := parsePositiveInt64Param(c, "tariff_id")
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid tariff_id")
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	resp, err := h.analyticsAdminClient.SetDefaultTariff(ctx, &analyticsadmin.SetDefaultTariffRequest{
+		TariffId: tariffID,
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+	return httpx.WriteProtoJSON(c, resp)
+}
+
+func (h *Handler) AssignVendorTariff(c *fiber.Ctx) error {
+	vendorID, err := parsePositiveInt64Param(c, "vendor_id")
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid vendor_id")
+	}
+
+	req := models.AssignVendorTariffRequest{}
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	resp, err := h.analyticsAdminClient.AssignVendorTariff(ctx, &analyticsadmin.AssignVendorTariffRequest{
+		VendorId: vendorID,
+		TariffId: req.TariffID,
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+	return httpx.WriteProtoJSON(c, resp)
+}
+
+func (h *Handler) GetVendorTariff(c *fiber.Ctx) error {
+	vendorID, err := parsePositiveInt64Param(c, "vendor_id")
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid vendor_id")
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	resp, err := h.analyticsAdminClient.GetVendorTariff(ctx, &analyticsadmin.GetVendorTariffRequest{
+		VendorId: vendorID,
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+	return httpx.WriteProtoJSON(c, resp)
+}
+
 func parseUint32Query(c *fiber.Ctx, key string) (uint32, error) {
 	raw := c.Query(key)
 	if raw == "" {
@@ -167,4 +285,12 @@ func parseUint32Query(c *fiber.Ctx, key string) (uint32, error) {
 	}
 
 	return uint32(value), nil
+}
+
+func parsePositiveInt64Param(c *fiber.Ctx, key string) (int64, error) {
+	value, err := strconv.ParseInt(c.Params(key), 10, 64)
+	if err != nil || value <= 0 {
+		return 0, fmt.Errorf("invalid %s", key)
+	}
+	return value, nil
 }

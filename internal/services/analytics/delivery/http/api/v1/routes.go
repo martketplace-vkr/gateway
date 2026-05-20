@@ -37,4 +37,16 @@ func (b *Binder) bind(router fiber.Router) {
 	analytics.Get("/products", b.handler.GetProducts)
 	analytics.Put("/products/:product_id/cost", b.handler.UpsertProductCost)
 	analytics.Get("/reports/sales", b.handler.ExportSalesReport)
+
+	adminTariffs := router.Group("/admin/tariffs", b.auth.Require(roles.Admin))
+	adminTariffs.Get("", b.handler.ListTariffs)
+	adminTariffs.Get("/", b.handler.ListTariffs)
+	adminTariffs.Post("", b.handler.CreateTariff)
+	adminTariffs.Post("/", b.handler.CreateTariff)
+	adminTariffs.Patch("/:tariff_id", b.handler.UpdateTariff)
+	adminTariffs.Patch("/:tariff_id/default", b.handler.SetDefaultTariff)
+
+	adminVendors := router.Group("/admin/vendors", b.auth.Require(roles.Admin))
+	adminVendors.Get("/:vendor_id/tariff", b.handler.GetVendorTariff)
+	adminVendors.Put("/:vendor_id/tariff", b.handler.AssignVendorTariff)
 }

@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 
+	analyticsadmin "github.com/martketplace-vkr/analytics/pkg/api/grpc/v1/admin"
 	analyticsvendor "github.com/martketplace-vkr/analytics/pkg/api/grpc/v1/vendor"
 	authadmin "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/admin"
 	authclient "github.com/martketplace-vkr/auth/pkg/api/grpc/v1/client"
@@ -110,6 +111,7 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	orderCli := orderclient.NewOrderClientServiceClient(orderConn)
 	orderAdminCli := orderadmin.NewOrderAdminServiceClient(orderConn)
 	orderVendorCli := ordervendor.NewOrderVendorServiceClient(orderConn)
+	analyticsAdminCli := analyticsadmin.NewAnalyticsAdminServiceClient(analyticsConn)
 	analyticsVendorCli := analyticsvendor.NewAnalyticsVendorServiceClient(analyticsConn)
 	userCli := userclient.NewUserClientServiceClient(userConn)
 	balanceCli := balanceclient.NewBalanceClientServiceClient(balanceConn)
@@ -143,7 +145,7 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	analyticsBinder := analyticsv1.NewBinder(
 		server,
 		authMiddleware,
-		analyticsv1.New(analyticsVendorCli, cfg.Analytics.Timeout.Duration),
+		analyticsv1.New(analyticsVendorCli, analyticsAdminCli, cfg.Analytics.Timeout.Duration),
 	)
 	userBinder := userv1.NewBinder(
 		server,
