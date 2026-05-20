@@ -42,4 +42,9 @@ func (b *Binder) bind(router fiber.Router) {
 	vendorOrders.Get("", b.handler.GetVendorOrderList)
 	vendorOrders.Get("/", b.handler.GetVendorOrderList)
 	vendorOrders.Patch("/:order_id", b.handler.UpdateVendorOrder)
+
+	adminOrders := router.Group("/admin/orders", b.auth.Require(roles.Admin))
+	adminOrders.Get("", b.handler.GetAdminOrderList)
+	adminOrders.Get("/", b.handler.GetAdminOrderList)
+	adminOrders.Patch("/:order_id/payment-status", b.handler.UpdateAdminOrderPaymentStatus)
 }

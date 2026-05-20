@@ -10,7 +10,7 @@ require (
 	github.com/martketplace-vkr/cart v1.0.0-rc002.0.20260519114019-e519eeb93ec0
 	github.com/martketplace-vkr/catalog v1.0.0-rc005
 	github.com/martketplace-vkr/media v1.0.0-rc001
-	github.com/martketplace-vkr/order v1.0.0-rc003.0.20260519181117-6fd0b67ea288
+	github.com/martketplace-vkr/order v1.0.0-rc003.0.20260520040314-0b566f99821f
 	github.com/martketplace-vkr/pkg v0.0.1
 	github.com/martketplace-vkr/user v1.0.0-rc002
 	github.com/prometheus/client_golang v1.23.2

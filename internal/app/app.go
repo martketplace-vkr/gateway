@@ -14,6 +14,7 @@ import (
 	catalogclient "github.com/martketplace-vkr/catalog/pkg/api/grpc/v1/client"
 	catalogvendor "github.com/martketplace-vkr/catalog/pkg/api/grpc/v1/vendor"
 	mediaclient "github.com/martketplace-vkr/media/pkg/api/grpc/v1/media"
+	orderadmin "github.com/martketplace-vkr/order/pkg/api/grpc/v1/admin"
 	orderclient "github.com/martketplace-vkr/order/pkg/api/grpc/v1/client"
 	ordervendor "github.com/martketplace-vkr/order/pkg/api/grpc/v1/vendor"
 	reviewadmin "github.com/martketplace-vkr/review/pkg/api/grpc/v1/admin"
@@ -107,6 +108,7 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	catalogCli := catalogclient.NewCatalogClientServiceClient(catalogConn)
 	catalogVendorCli := catalogvendor.NewCatalogVendorServiceClient(catalogConn)
 	orderCli := orderclient.NewOrderClientServiceClient(orderConn)
+	orderAdminCli := orderadmin.NewOrderAdminServiceClient(orderConn)
 	orderVendorCli := ordervendor.NewOrderVendorServiceClient(orderConn)
 	analyticsVendorCli := analyticsvendor.NewAnalyticsVendorServiceClient(analyticsConn)
 	userCli := userclient.NewUserClientServiceClient(userConn)
@@ -136,7 +138,7 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	orderBinder := orderv1.NewBinder(
 		server,
 		authMiddleware,
-		orderv1.New(orderCli, orderVendorCli, cartCli, catalogCli, cfg.Order.Timeout.Duration),
+		orderv1.New(orderCli, orderAdminCli, orderVendorCli, cartCli, catalogCli, userCli, cfg.Order.Timeout.Duration),
 	)
 	analyticsBinder := analyticsv1.NewBinder(
 		server,
