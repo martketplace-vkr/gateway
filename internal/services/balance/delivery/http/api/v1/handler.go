@@ -128,6 +128,54 @@ func (h *Handler) GetWalletTransactions(c *fiber.Ctx) error {
 	return httpx.WriteProtoJSON(c, resp)
 }
 
+func (h *Handler) GetVendorWallet(c *fiber.Ctx) error {
+	user, err := middleware.CurrentUser(c)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	resp, err := h.balanceAdmin.GetWallet(ctx, &balanceadmin.GetWalletRequest{
+		OwnerType: balancedomain.WalletOwnerType_WALLET_OWNER_TYPE_VENDOR,
+		OwnerId:   user.ID,
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	return httpx.WriteProtoJSON(c, resp)
+}
+
+func (h *Handler) GetVendorWalletTransactions(c *fiber.Ctx) error {
+	user, err := middleware.CurrentUser(c)
+	if err != nil {
+		return err
+	}
+
+	limit, offset, currencyCode, err := parseWalletTransactionQuery(c)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	resp, err := h.balanceAdmin.GetWalletTransactions(ctx, &balanceadmin.GetWalletTransactionsRequest{
+		OwnerType:    balancedomain.WalletOwnerType_WALLET_OWNER_TYPE_VENDOR,
+		OwnerId:      user.ID,
+		CurrencyCode: currencyCode,
+		Limit:        limit,
+		Offset:       offset,
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	return httpx.WriteProtoJSON(c, resp)
+}
+
 func (h *Handler) CreateCryptoTopUp(c *fiber.Ctx) error {
 	return h.createTopUp(c, true)
 }
@@ -296,6 +344,53 @@ func (h *Handler) ListAdminTopUps(c *fiber.Ctx) error {
 	defer cancel()
 
 	resp, err := h.balanceAdmin.ListTopUps(ctx, req)
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	return httpx.WriteProtoJSON(c, resp)
+}
+
+func (h *Handler) GetAdminWallet(c *fiber.Ctx) error {
+	ownerType, ownerID, err := parseAdminWalletOwnerQuery(c)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	resp, err := h.balanceAdmin.GetWallet(ctx, &balanceadmin.GetWalletRequest{
+		OwnerType: ownerType,
+		OwnerId:   ownerID,
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	return httpx.WriteProtoJSON(c, resp)
+}
+
+func (h *Handler) GetAdminWalletTransactions(c *fiber.Ctx) error {
+	ownerType, ownerID, err := parseAdminWalletOwnerQuery(c)
+	if err != nil {
+		return err
+	}
+	limit, offset, currencyCode, err := parseWalletTransactionQuery(c)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	resp, err := h.balanceAdmin.GetWalletTransactions(ctx, &balanceadmin.GetWalletTransactionsRequest{
+		OwnerType:    ownerType,
+		OwnerId:      ownerID,
+		CurrencyCode: currencyCode,
+		Limit:        limit,
+		Offset:       offset,
+	})
 	if err != nil {
 		return httpx.MapGRPCError(err)
 	}
@@ -518,6 +613,43 @@ func parseOptionalInt64PtrQuery(c *fiber.Ctx, key string) (*int64, error) {
 	}
 
 	return &value, nil
+}
+
+func parseWalletTransactionQuery(c *fiber.Ctx) (uint32, uint64, *int64, error) {
+	limit, err := parseOptionalUint32Query(c, "limit", 50)
+	if err != nil {
+		return 0, 0, nil, fiber.NewError(fiber.StatusBadRequest, "invalid limit")
+	}
+	offset, err := parseOptionalUint64Query(c, "offset", 0)
+	if err != nil {
+		return 0, 0, nil, fiber.NewError(fiber.StatusBadRequest, "invalid offset")
+	}
+	currencyCode, err := parseOptionalInt64PtrQuery(c, "currency_code")
+	if err != nil {
+		return 0, 0, nil, fiber.NewError(fiber.StatusBadRequest, "invalid currency_code")
+	}
+
+	return limit, offset, currencyCode, nil
+}
+
+func parseAdminWalletOwnerQuery(c *fiber.Ctx) (balancedomain.WalletOwnerType, int64, error) {
+	rawOwnerType := strings.TrimSpace(strings.ToLower(c.Query("owner_type")))
+	if rawOwnerType == "" {
+		rawOwnerType = "system"
+	}
+
+	switch rawOwnerType {
+	case "system", "3":
+		return balancedomain.WalletOwnerType_WALLET_OWNER_TYPE_SYSTEM, 0, nil
+	case "vendor", "2":
+		ownerID, err := strconv.ParseInt(strings.TrimSpace(c.Query("owner_id")), 10, 64)
+		if err != nil || ownerID <= 0 {
+			return 0, 0, fiber.NewError(fiber.StatusBadRequest, "owner_id is required for vendor wallet")
+		}
+		return balancedomain.WalletOwnerType_WALLET_OWNER_TYPE_VENDOR, ownerID, nil
+	default:
+		return 0, 0, fiber.NewError(fiber.StatusBadRequest, "owner_type must be system or vendor")
+	}
 }
 
 func parseOptionalUint32Query(c *fiber.Ctx, key string, defaultValue uint32) (uint32, error) {

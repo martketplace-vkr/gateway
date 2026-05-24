@@ -6,7 +6,7 @@ require (
 	github.com/gofiber/fiber/v2 v2.52.12
 	github.com/martketplace-vkr/analytics v0.0.0-20260520064232-0b5e8a541918
 	github.com/martketplace-vkr/auth v1.0.0-rc002
-	github.com/martketplace-vkr/balance v1.0.0-rc002.0.20260520030206-af694664fe7b
+	github.com/martketplace-vkr/balance v1.0.0-rc002.0.20260524115252-5569f160edc9
 	github.com/martketplace-vkr/cart v1.0.0-rc002.0.20260519114019-e519eeb93ec0
 	github.com/martketplace-vkr/catalog v1.0.0-rc005
 	github.com/martketplace-vkr/media v1.0.0-rc001

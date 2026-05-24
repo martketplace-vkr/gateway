@@ -45,7 +45,13 @@ func (b *Binder) bind(router fiber.Router) {
 	balance.Post("/withdrawals", b.handler.CreateWithdrawal)
 	balance.Get("/withdrawals/:withdrawal_id", b.handler.GetWithdrawal)
 
+	vendorBalance := router.Group("/vendor/balance", b.auth.Require(roles.Vendor))
+	vendorBalance.Get("/wallet", b.handler.GetVendorWallet)
+	vendorBalance.Get("/transactions", b.handler.GetVendorWalletTransactions)
+
 	adminBalance := router.Group("/admin/balance", b.auth.Require(roles.Admin))
+	adminBalance.Get("/wallet", b.handler.GetAdminWallet)
+	adminBalance.Get("/transactions", b.handler.GetAdminWalletTransactions)
 	adminBalance.Get("/top-ups", b.handler.ListAdminTopUps)
 	adminBalance.Post("/top-ups/:external_id/confirm", b.handler.ConfirmAdminTopUp)
 }
