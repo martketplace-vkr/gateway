@@ -128,6 +128,8 @@ github.com/martketplace-vkr/analytics v0.0.0-20260519155347-a50a0700e74b h1:dFty
 github.com/martketplace-vkr/analytics v0.0.0-20260519155347-a50a0700e74b/go.mod h1:mWCyC2HpwaHYMec6q52VHAFkMWPymteZ4SSNiDpbT+E=
 github.com/martketplace-vkr/analytics v0.0.0-20260520064232-0b5e8a541918 h1:RS7NSYcJmzO9STOF9lhG+LA3e5ccYUn7vCTqR7BjwYU=
 github.com/martketplace-vkr/analytics v0.0.0-20260520064232-0b5e8a541918/go.mod h1:mWCyC2HpwaHYMec6q52VHAFkMWPymteZ4SSNiDpbT+E=
+github.com/martketplace-vkr/analytics v0.0.0-20260531093035-df12cfb6823c h1:WnyROsuRt5n5IFOVvg1CUuBmRbEUgZ1XpV9w2m7FyQc=
+github.com/martketplace-vkr/analytics v0.0.0-20260531093035-df12cfb6823c/go.mod h1:aCUTVneXu3A51eH7ms9FxLJGUlA1pb+84hO7NcZS0jE=
 github.com/martketplace-vkr/auth v1.0.0-rc002 h1:Nu42WGWDzhPw4gYo/TPWdQ5MoctoZd910Uwvvat+R/I=
 github.com/martketplace-vkr/auth v1.0.0-rc002/go.mod h1:cRwe1RpbOTej+8uwIlmgxYD+R8d80olQzTnNtQnoEmc=
 github.com/martketplace-vkr/balance v1.0.0-rc002.0.20260415182426-a55b81d1447e h1:4uh6kHUCZALb56zK1V855EUwD4KR4+y2aNxu9f01ijI=
