@@ -3,6 +3,7 @@ module github.com/martketplace-vkr/gateway
 go 1.25.1
 
 require (
+	github.com/gofiber/contrib/websocket v1.3.4
 	github.com/gofiber/fiber/v2 v2.52.12
 	github.com/martketplace-vkr/analytics v0.0.0-20260531093035-df12cfb6823c
 	github.com/martketplace-vkr/auth v1.0.0-rc002.0.20260601074929-15df462ca6bf
@@ -30,6 +31,7 @@ require (
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/creasty/defaults v1.8.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
+	github.com/fasthttp/websocket v1.5.8 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.12 // indirect
 	github.com/getsentry/sentry-go v0.43.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
@@ -81,6 +83,7 @@ require (
 	github.com/rs/zerolog v1.34.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/samber/lo v1.53.0 // indirect
+	github.com/savsgio/gotils v0.0.0-20240303185622-093b76447511 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect

@@ -71,6 +71,32 @@ func (a *Auth) Require(required ...int64) fiber.Handler {
 	}
 }
 
+func (a *Auth) RequireQueryToken(required ...int64) fiber.Handler {
+	requiredAccess := roles.GetAccess(required...)
+
+	return func(c *fiber.Ctx) error {
+		token := strings.TrimSpace(c.Query("access_token"))
+		if token == "" {
+			return fiber.ErrUnauthorized
+		}
+
+		user, err := a.validateToken(c, token, requiredAccess)
+		if err != nil {
+			return fiber.ErrUnauthorized
+		}
+		if user.ID <= 0 {
+			return fiber.ErrUnauthorized
+		}
+		if requiredAccess != 0 && !roles.CheckAccess(user.PermissionKey, requiredAccess) {
+			return fiber.ErrForbidden
+		}
+
+		c.Locals(pkghttp.UserLocalsKey, user)
+
+		return c.Next()
+	}
+}
+
 func (a *Auth) validateOrRefresh(c *fiber.Ctx, token string, requiredAccess int64) (*pkghttp.User, string, error) {
 	user, err := a.validateToken(c, token, requiredAccess)
 	if err == nil {

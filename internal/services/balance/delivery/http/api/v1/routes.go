@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 
+	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
 	"github.com/martketplace-vkr/gateway/internal/common/middleware"
 	"github.com/martketplace-vkr/gateway/pkg/roles"
@@ -31,6 +32,7 @@ func (b *Binder) BindRoutes(_ context.Context) {
 
 func (b *Binder) bind(router fiber.Router) {
 	router.Post("/balance/webhooks/mock-provider", b.handler.HandleMockProviderWebhook)
+	router.Get("/balance/notifications/ws", b.auth.RequireQueryToken(roles.Client), websocket.New(b.handler.HandleNotificationsWS))
 
 	balance := router.Group("/balance", b.auth.Require(roles.Client))
 
