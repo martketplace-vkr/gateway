@@ -27,3 +27,12 @@ type AuthMeResponse struct {
 	LastName  string `json:"last_name,omitempty"`
 	AvatarURL string `json:"avatar_url,omitempty"`
 }
+
+type VendorResponse struct {
+	ID    int64  `json:"id"`
+	Email string `json:"email"`
+}
+
+type VendorsResponse struct {
+	Vendors []VendorResponse `json:"vendors"`
+}

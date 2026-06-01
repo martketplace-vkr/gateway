@@ -365,6 +365,35 @@ func (h *Handler) AdminMe(c *fiber.Ctx) error {
 	})
 }
 
+func (h *Handler) AdminVendors(c *fiber.Ctx) error {
+	token, err := extractBearerToken(c)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.authTimeout)
+	defer cancel()
+
+	if _, err := h.adminAuthClient.ValidateToken(ctx, &authadmin.ValidateTokenRequest{Token: token}); err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	resp, err := h.adminAuthClient.ListVendors(ctx, &authadmin.ListVendorsRequest{})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	vendors := make([]models.VendorResponse, 0, len(resp.GetVendors()))
+	for _, vendor := range resp.GetVendors() {
+		vendors = append(vendors, models.VendorResponse{
+			ID:    vendor.GetVendorId(),
+			Email: vendor.GetEmail(),
+		})
+	}
+
+	return c.JSON(models.VendorsResponse{Vendors: vendors})
+}
+
 func (h *Handler) VendorMe(c *fiber.Ctx) error {
 	token, err := extractBearerToken(c)
 	if err != nil {

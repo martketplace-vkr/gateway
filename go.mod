@@ -5,13 +5,14 @@ go 1.25.1
 require (
 	github.com/gofiber/fiber/v2 v2.52.12
 	github.com/martketplace-vkr/analytics v0.0.0-20260531093035-df12cfb6823c
-	github.com/martketplace-vkr/auth v1.0.0-rc002
+	github.com/martketplace-vkr/auth v1.0.0-rc002.0.20260601074929-15df462ca6bf
 	github.com/martketplace-vkr/balance v1.0.0-rc002.0.20260524115252-5569f160edc9
 	github.com/martketplace-vkr/cart v1.0.0-rc002.0.20260519114019-e519eeb93ec0
 	github.com/martketplace-vkr/catalog v1.0.0-rc005
 	github.com/martketplace-vkr/media v1.0.0-rc001
 	github.com/martketplace-vkr/order v1.0.0-rc003.0.20260520040314-0b566f99821f
 	github.com/martketplace-vkr/pkg v0.0.1
+	github.com/martketplace-vkr/review v0.0.0-20260519205041-38b1d3d758d9
 	github.com/martketplace-vkr/user v1.0.0-rc002
 	github.com/prometheus/client_golang v1.23.2
 	google.golang.org/grpc v1.80.0
@@ -60,7 +61,6 @@ require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
-	github.com/martketplace-vkr/review v0.0.0-20260519205041-38b1d3d758d9 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
