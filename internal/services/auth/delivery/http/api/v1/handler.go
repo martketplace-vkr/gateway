@@ -342,18 +342,33 @@ func (h *Handler) VendorLogout(c *fiber.Ctx) error {
 	return httpx.WriteProtoJSON(c, resp)
 }
 
+func (h *Handler) AdminMe(c *fiber.Ctx) error {
+	token, err := extractBearerToken(c)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.authTimeout)
+	defer cancel()
+
+	resp, err := h.adminAuthClient.ValidateToken(ctx, &authadmin.ValidateTokenRequest{
+		Token: token,
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	return c.JSON(models.AuthMeResponse{
+		ID:    resp.GetUserId(),
+		Email: resp.GetLogin(),
+		Role:  strings.TrimSpace(resp.GetRole()),
+	})
+}
+
 func (h *Handler) VendorMe(c *fiber.Ctx) error {
-	token := strings.TrimSpace(c.Get(fiber.HeaderAuthorization))
-	if token == "" {
-		return fiber.ErrUnauthorized
-	}
-
-	if strings.HasPrefix(strings.ToLower(token), "bearer ") {
-		token = strings.TrimSpace(token[7:])
-	}
-
-	if token == "" {
-		return fiber.ErrUnauthorized
+	token, err := extractBearerToken(c)
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := httpx.RPCContext(c, h.authTimeout)
@@ -366,11 +381,28 @@ func (h *Handler) VendorMe(c *fiber.Ctx) error {
 		return httpx.MapGRPCError(err)
 	}
 
-	return c.JSON(models.VendorMeResponse{
+	return c.JSON(models.AuthMeResponse{
 		ID:    resp.GetVendorId(),
 		Email: resp.GetLogin(),
 		Role:  strings.TrimSpace(resp.GetRole()),
 	})
+}
+
+func extractBearerToken(c *fiber.Ctx) (string, error) {
+	token := strings.TrimSpace(c.Get(fiber.HeaderAuthorization))
+	if token == "" {
+		return "", fiber.ErrUnauthorized
+	}
+
+	if strings.HasPrefix(strings.ToLower(token), "bearer ") {
+		token = strings.TrimSpace(token[7:])
+	}
+
+	if token == "" {
+		return "", fiber.ErrUnauthorized
+	}
+
+	return token, nil
 }
 
 func (h *Handler) resolveUserID(c *fiber.Ctx, accessToken string) (int64, error) {

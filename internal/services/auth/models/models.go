@@ -19,7 +19,7 @@ type LogoutRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-type VendorMeResponse struct {
+type AuthMeResponse struct {
 	ID        int64  `json:"id"`
 	Email     string `json:"email"`
 	Role      string `json:"role"`
