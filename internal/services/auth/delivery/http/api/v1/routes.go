@@ -47,6 +47,11 @@ func (b *Binder) bind(router fiber.Router) {
 	adminAuth.Get("/me", b.handler.AdminMe)
 	adminAuth.Get("/vendors", b.handler.AdminVendors)
 
+	adminClients := router.Group("/admin/clients")
+	adminClients.Get("", b.handler.AdminClients)
+	adminClients.Get("/:client_id", b.handler.AdminClient)
+	adminClients.Patch("/:client_id/status", b.handler.UpdateAdminClientStatus)
+
 	vendorAuth := router.Group("/vendor/auth")
 	vendorAuth.Post("/register", b.handler.VendorRegister)
 	vendorAuth.Post("/sign-up", b.handler.VendorRegister)

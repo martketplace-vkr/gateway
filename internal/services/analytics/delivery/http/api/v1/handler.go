@@ -302,6 +302,20 @@ func (h *Handler) GetVendorTariff(c *fiber.Ctx) error {
 	return httpx.WriteProtoJSON(c, resp)
 }
 
+func (h *Handler) GetUserDashboard(c *fiber.Ctx) error {
+	days, err := strconv.ParseUint(c.Query("days", "7"), 10, 32)
+	if err != nil || (days != 7 && days != 30) {
+		return fiber.NewError(fiber.StatusBadRequest, "days must be 7 or 30")
+	}
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+	resp, err := h.analyticsAdminClient.GetUserDashboard(ctx, &analyticsadmin.GetUserDashboardRequest{Days: uint32(days)})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+	return httpx.WriteProtoJSON(c, resp)
+}
+
 func parseUint32Query(c *fiber.Ctx, key string) (uint32, error) {
 	raw := c.Query(key)
 	if raw == "" {

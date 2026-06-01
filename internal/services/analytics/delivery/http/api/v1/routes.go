@@ -51,4 +51,7 @@ func (b *Binder) bind(router fiber.Router) {
 	adminVendors := router.Group("/admin/vendors", b.auth.Require(roles.Admin))
 	adminVendors.Get("/:vendor_id/tariff", b.handler.GetVendorTariff)
 	adminVendors.Put("/:vendor_id/tariff", b.handler.AssignVendorTariff)
+
+	adminAnalytics := router.Group("/admin/analytics", b.auth.Require(roles.Admin))
+	adminAnalytics.Get("/users", b.handler.GetUserDashboard)
 }

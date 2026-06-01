@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,6 +14,112 @@ import (
 	"github.com/martketplace-vkr/gateway/pkg/consts"
 	userclient "github.com/martketplace-vkr/user/pkg/api/grpc/v1/client"
 )
+
+func (h *Handler) AdminClients(c *fiber.Ctx) error {
+	adminID, err := h.validateAdmin(c)
+	if err != nil || adminID <= 0 {
+		return err
+	}
+	limit, _ := strconv.ParseUint(c.Query("limit", "50"), 10, 32)
+	offset, _ := strconv.ParseUint(c.Query("offset", "0"), 10, 32)
+	ctx, cancel := httpx.RPCContext(c, h.authTimeout)
+	defer cancel()
+	resp, err := h.adminAuthClient.ListClients(ctx, &authadmin.ListClientsRequest{
+		Query: c.Query("query"), Status: c.Query("status"), Limit: uint32(limit), Offset: uint32(offset),
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+	result := models.ClientsResponse{Total: resp.GetTotal(), Clients: make([]models.ClientProfile, 0, len(resp.GetClients()))}
+	for _, client := range resp.GetClients() {
+		result.Clients = append(result.Clients, h.clientProfile(c, client, false))
+	}
+	return c.JSON(result)
+}
+
+func (h *Handler) AdminClient(c *fiber.Ctx) error {
+	if _, err := h.validateAdmin(c); err != nil {
+		return err
+	}
+	clientID, err := strconv.ParseInt(c.Params("client_id"), 10, 64)
+	if err != nil || clientID <= 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid client_id")
+	}
+	ctx, cancel := httpx.RPCContext(c, h.authTimeout)
+	defer cancel()
+	client, err := h.adminAuthClient.GetClient(ctx, &authadmin.GetClientRequest{ClientId: clientID})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+	return c.JSON(h.clientProfile(c, client, true))
+}
+
+func (h *Handler) UpdateAdminClientStatus(c *fiber.Ctx) error {
+	adminID, err := h.validateAdmin(c)
+	if err != nil {
+		return err
+	}
+	clientID, err := strconv.ParseInt(c.Params("client_id"), 10, 64)
+	if err != nil || clientID <= 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid client_id")
+	}
+	req := models.UpdateClientStatusRequest{}
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+	ctx, cancel := httpx.RPCContext(c, h.authTimeout)
+	defer cancel()
+	client, err := h.adminAuthClient.UpdateClientStatus(ctx, &authadmin.UpdateClientStatusRequest{
+		ClientId: clientID, AdminId: adminID, Status: strings.TrimSpace(req.Status), Reason: strings.TrimSpace(req.Reason),
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+	return c.JSON(h.clientProfile(c, client, true))
+}
+
+func (h *Handler) validateAdmin(c *fiber.Ctx) (int64, error) {
+	token, err := extractBearerToken(c)
+	if err != nil {
+		return 0, err
+	}
+	ctx, cancel := httpx.RPCContext(c, h.authTimeout)
+	defer cancel()
+	resp, err := h.adminAuthClient.ValidateToken(ctx, &authadmin.ValidateTokenRequest{Token: token})
+	if err != nil {
+		return 0, httpx.MapGRPCError(err)
+	}
+	return resp.GetUserId(), nil
+}
+
+func (h *Handler) clientProfile(c *fiber.Ctx, client *authadmin.Client, withAddresses bool) models.ClientProfile {
+	result := models.ClientProfile{
+		ID: client.GetClientId(), Email: client.GetEmail(), EmailVerified: client.GetEmailVerified(),
+		Status: client.GetStatus(), StatusReason: client.GetStatusReason(), CreatedAt: client.GetCreatedAt(),
+		UpdatedAt: client.GetUpdatedAt(), LastActivityAt: client.GetLastActivityAt(),
+	}
+	ctx, cancel := httpx.RPCContext(c, h.userTimeout)
+	defer cancel()
+	if profile, err := h.userClient.GetUser(ctx, &userclient.GetUserRequest{UserId: client.GetClientId()}); err == nil {
+		result.FirstName = profile.GetFirstName()
+		result.LastName = profile.GetLastName()
+		result.AvatarURL = profile.GetAvatarUrl()
+	}
+	if withAddresses {
+		ctx, cancel := httpx.RPCContext(c, h.userTimeout)
+		defer cancel()
+		if addresses, err := h.userClient.GetUserAddresses(ctx, &userclient.GetUserAddressesRequest{UserID: client.GetClientId()}); err == nil {
+			result.Addresses = addresses.GetAddresses()
+		}
+	}
+	for _, event := range client.GetModerationEvents() {
+		result.ModerationEvents = append(result.ModerationEvents, models.ClientModerationEvent{
+			ID: event.GetId(), AdminID: event.GetAdminId(), OldStatus: event.GetOldStatus(),
+			NewStatus: event.GetNewStatus(), Reason: event.GetReason(), CreatedAt: event.GetCreatedAt(),
+		})
+	}
+	return result
+}
 
 type Handler struct {
 	authClient       authclient.AuthClientServiceClient
