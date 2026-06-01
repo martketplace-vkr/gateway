@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gofiber/contrib/websocket"
@@ -114,6 +115,41 @@ func (h *Handler) writeNewCryptoTopUpNotifications(conn *websocket.Conn, userID 
 		}
 	}
 
+	transactions, err := h.listClientUSDTTransactions(userID)
+	if err != nil {
+		return err
+	}
+
+	for index := len(transactions) - 1; index >= 0; index-- {
+		transaction := transactions[index]
+		if !isConfirmedCryptoTopUpTransaction(transaction) {
+			continue
+		}
+
+		id := notificationTransactionID(transaction)
+		if _, ok := seen[id]; ok {
+			continue
+		}
+
+		amount := cryptoTopUpTransactionAmount(transaction)
+		if amount == "" {
+			continue
+		}
+
+		seen[id] = struct{}{}
+		if err := conn.WriteJSON(cryptoTopUpNotification{
+			Type:         "crypto_top_up_confirmed",
+			ID:           id,
+			Amount:       amount,
+			CurrencyCode: int64(currency.USDTinTRC),
+			Asset:        "USDT",
+			Network:      "TRC-20",
+			TxHash:       transactionTxHash(transaction),
+		}); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -127,6 +163,16 @@ func (h *Handler) confirmedCryptoTopUpIDs(userID int64) (map[string]struct{}, er
 	for _, topUp := range topUps {
 		if isConfirmedCryptoTopUp(topUp) {
 			seen[notificationTopUpID(topUp)] = struct{}{}
+		}
+	}
+
+	transactions, err := h.listClientUSDTTransactions(userID)
+	if err != nil {
+		return nil, err
+	}
+	for _, transaction := range transactions {
+		if isConfirmedCryptoTopUpTransaction(transaction) {
+			seen[notificationTransactionID(transaction)] = struct{}{}
 		}
 	}
 
@@ -149,6 +195,24 @@ func (h *Handler) listClientTopUps(userID int64) ([]*balancedomain.TopUp, error)
 	return resp.GetTopUps(), nil
 }
 
+func (h *Handler) listClientUSDTTransactions(userID int64) ([]*balancedomain.LedgerTransaction, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
+	defer cancel()
+
+	currencyCode := int64(currency.USDTinTRC)
+	resp, err := h.balanceClient.GetWalletTransactions(ctx, &balanceclient.GetWalletTransactionsRequest{
+		UserId:       userID,
+		CurrencyCode: &currencyCode,
+		Limit:        50,
+		Offset:       0,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.GetTransactions(), nil
+}
+
 func isConfirmedCryptoTopUp(topUp *balancedomain.TopUp) bool {
 	return topUp != nil &&
 		topUp.GetStatus() == balancedomain.TopUpStatus_TOP_UP_STATUS_CONFIRMED &&
@@ -158,9 +222,57 @@ func isConfirmedCryptoTopUp(topUp *balancedomain.TopUp) bool {
 }
 
 func notificationTopUpID(topUp *balancedomain.TopUp) string {
+	if topUp.GetIdempotencyKey() != "" {
+		return topUp.GetIdempotencyKey()
+	}
 	if topUp.GetTxHash() != "" {
 		return fmt.Sprintf("%s:%d", topUp.GetTxHash(), topUp.GetId())
 	}
 
 	return fmt.Sprintf("top-up:%d", topUp.GetId())
+}
+
+func isConfirmedCryptoTopUpTransaction(transaction *balancedomain.LedgerTransaction) bool {
+	return transaction != nil &&
+		transaction.GetStatus() == balancedomain.LedgerTransactionStatus_LEDGER_TRANSACTION_STATUS_POSTED &&
+		transaction.GetType() == balancedomain.LedgerTransactionType_LEDGER_TRANSACTION_TYPE_TOP_UP &&
+		transaction.GetReferenceType() == balancedomain.ReferenceType_REFERENCE_TYPE_TOP_UP &&
+		cryptoTopUpTransactionAmount(transaction) != ""
+}
+
+func cryptoTopUpTransactionAmount(transaction *balancedomain.LedgerTransaction) string {
+	for _, entry := range transaction.GetEntries() {
+		if entry.GetDirection() == balancedomain.EntryDirection_ENTRY_DIRECTION_CREDIT &&
+			entry.GetMoney() != nil &&
+			entry.GetMoney().GetCurrencyCode() == int64(currency.USDTinTRC) {
+			return entry.GetMoney().GetAmount()
+		}
+	}
+
+	return ""
+}
+
+func notificationTransactionID(transaction *balancedomain.LedgerTransaction) string {
+	if transaction.GetIdempotencyKey() != "" {
+		return transaction.GetIdempotencyKey()
+	}
+
+	return fmt.Sprintf("transaction:%d", transaction.GetId())
+}
+
+func transactionTxHash(transaction *balancedomain.LedgerTransaction) string {
+	key := transaction.GetIdempotencyKey()
+	if strings.HasPrefix(key, "crypto-deposit:") {
+		parts := strings.Split(key, ":")
+		if len(parts) >= 3 {
+			return parts[2]
+		}
+	}
+
+	referenceID := transaction.GetReferenceId()
+	if hash, _, ok := strings.Cut(referenceID, ":"); ok {
+		return hash
+	}
+
+	return referenceID
 }

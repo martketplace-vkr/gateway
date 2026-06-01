@@ -3,6 +3,7 @@ package v1
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -95,6 +96,34 @@ func (h *Handler) GetProducts(c *fiber.Ctx) error {
 	}
 
 	return httpx.WriteProtoJSON(c, resp)
+}
+
+func (h *Handler) RecordProductView(c *fiber.Ctx) error {
+	productID, err := strconv.ParseInt(c.Params("product_id"), 10, 64)
+	if err != nil || productID <= 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid product_id")
+	}
+
+	req := models.RecordProductViewRequest{}
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+	req.VisitorID = strings.TrimSpace(req.VisitorID)
+	if req.VisitorID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "visitor_id is required")
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	if _, err := h.analyticsVendorClient.RecordProductView(ctx, &analyticsvendor.RecordProductViewRequest{
+		ProductId: productID,
+		VisitorId: req.VisitorID,
+	}); err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func (h *Handler) UpsertProductCost(c *fiber.Ctx) error {

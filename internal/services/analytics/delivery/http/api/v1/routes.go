@@ -30,6 +30,8 @@ func (b *Binder) BindRoutes(_ context.Context) {
 }
 
 func (b *Binder) bind(router fiber.Router) {
+	router.Post("/analytics/products/:product_id/view", b.handler.RecordProductView)
+
 	analytics := router.Group("/vendor/analytics", b.auth.Require(roles.Vendor))
 
 	analytics.Get("/overview", b.handler.GetOverview)
