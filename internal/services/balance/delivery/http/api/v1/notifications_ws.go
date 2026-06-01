@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"strings"
 	"time"
 
@@ -47,6 +48,12 @@ func (h *Handler) HandleNotificationsWS(conn *websocket.Conn) {
 		_ = conn.Close()
 		return
 	}
+	lastUSDTBalance, err := h.currentUSDTAvailableBalance(user.ID)
+	if err != nil {
+		_ = conn.WriteJSON(wsMessage{Type: "error"})
+		_ = conn.Close()
+		return
+	}
 
 	if err := conn.WriteJSON(wsMessage{Type: "ready"}); err != nil {
 		return
@@ -72,9 +79,11 @@ func (h *Handler) HandleNotificationsWS(conn *websocket.Conn) {
 		case <-closed:
 			return
 		case <-pollTicker.C:
-			if err := h.writeNewCryptoTopUpNotifications(conn, user.ID, seen); err != nil {
+			nextUSDTBalance, err := h.writeNewCryptoTopUpNotifications(conn, user.ID, seen, lastUSDTBalance)
+			if err != nil {
 				return
 			}
+			lastUSDTBalance = nextUSDTBalance
 		case <-pingTicker.C:
 			if err := conn.WriteJSON(wsMessage{Type: "ping"}); err != nil {
 				return
@@ -83,10 +92,12 @@ func (h *Handler) HandleNotificationsWS(conn *websocket.Conn) {
 	}
 }
 
-func (h *Handler) writeNewCryptoTopUpNotifications(conn *websocket.Conn, userID int64, seen map[string]struct{}) error {
+func (h *Handler) writeNewCryptoTopUpNotifications(conn *websocket.Conn, userID int64, seen map[string]struct{}, lastUSDTBalance *big.Rat) (*big.Rat, error) {
+	sentSpecificNotification := false
+
 	topUps, err := h.listClientTopUps(userID)
 	if err != nil {
-		return err
+		return lastUSDTBalance, err
 	}
 
 	for index := len(topUps) - 1; index >= 0; index-- {
@@ -111,13 +122,14 @@ func (h *Handler) writeNewCryptoTopUpNotifications(conn *websocket.Conn, userID 
 			TxHash:       topUp.GetTxHash(),
 			TopUpID:      topUp.GetId(),
 		}); err != nil {
-			return err
+			return lastUSDTBalance, err
 		}
+		sentSpecificNotification = true
 	}
 
 	transactions, err := h.listClientUSDTTransactions(userID)
 	if err != nil {
-		return err
+		return lastUSDTBalance, err
 	}
 
 	for index := len(transactions) - 1; index >= 0; index-- {
@@ -146,11 +158,35 @@ func (h *Handler) writeNewCryptoTopUpNotifications(conn *websocket.Conn, userID 
 			Network:      "TRC-20",
 			TxHash:       transactionTxHash(transaction),
 		}); err != nil {
-			return err
+			return lastUSDTBalance, err
+		}
+		sentSpecificNotification = true
+	}
+
+	nextUSDTBalance, err := h.currentUSDTAvailableBalance(userID)
+	if err != nil {
+		return lastUSDTBalance, err
+	}
+
+	delta := new(big.Rat).Sub(nextUSDTBalance, lastUSDTBalance)
+	if !sentSpecificNotification && delta.Sign() > 0 {
+		id := fmt.Sprintf("balance-delta:%d:%s", userID, time.Now().UTC().Format(time.RFC3339Nano))
+		if _, ok := seen[id]; !ok {
+			seen[id] = struct{}{}
+			if err := conn.WriteJSON(cryptoTopUpNotification{
+				Type:         "crypto_top_up_confirmed",
+				ID:           id,
+				Amount:       formatRatAmount(delta, 8),
+				CurrencyCode: int64(currency.USDTinTRC),
+				Asset:        "USDT",
+				Network:      "TRC-20",
+			}); err != nil {
+				return lastUSDTBalance, err
+			}
 		}
 	}
 
-	return nil
+	return nextUSDTBalance, nil
 }
 
 func (h *Handler) confirmedCryptoTopUpIDs(userID int64) (map[string]struct{}, error) {
@@ -195,6 +231,25 @@ func (h *Handler) listClientTopUps(userID int64) ([]*balancedomain.TopUp, error)
 	return resp.GetTopUps(), nil
 }
 
+func (h *Handler) currentUSDTAvailableBalance(userID int64) (*big.Rat, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
+	defer cancel()
+
+	resp, err := h.balanceClient.GetWallet(ctx, &balanceclient.GetWalletRequest{UserId: userID})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, account := range resp.GetWallet().GetAccounts() {
+		if account.GetCurrencyCode() == int64(currency.USDTinTRC) &&
+			account.GetAccountType() == balancedomain.AccountType_ACCOUNT_TYPE_AVAILABLE {
+			return parseRatAmount(account.GetBalance()), nil
+		}
+	}
+
+	return new(big.Rat), nil
+}
+
 func (h *Handler) listClientUSDTTransactions(userID int64) ([]*balancedomain.LedgerTransaction, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
 	defer cancel()
@@ -235,9 +290,29 @@ func notificationTopUpID(topUp *balancedomain.TopUp) string {
 func isConfirmedCryptoTopUpTransaction(transaction *balancedomain.LedgerTransaction) bool {
 	return transaction != nil &&
 		transaction.GetStatus() == balancedomain.LedgerTransactionStatus_LEDGER_TRANSACTION_STATUS_POSTED &&
-		transaction.GetType() == balancedomain.LedgerTransactionType_LEDGER_TRANSACTION_TYPE_TOP_UP &&
-		transaction.GetReferenceType() == balancedomain.ReferenceType_REFERENCE_TYPE_TOP_UP &&
+		isCryptoTopUpLikeTransaction(transaction) &&
 		cryptoTopUpTransactionAmount(transaction) != ""
+}
+
+func isCryptoTopUpLikeTransaction(transaction *balancedomain.LedgerTransaction) bool {
+	if transaction.GetType() == balancedomain.LedgerTransactionType_LEDGER_TRANSACTION_TYPE_TOP_UP ||
+		transaction.GetReferenceType() == balancedomain.ReferenceType_REFERENCE_TYPE_TOP_UP {
+		return true
+	}
+
+	if transaction.GetType() != balancedomain.LedgerTransactionType_LEDGER_TRANSACTION_TYPE_ADJUSTMENT {
+		return false
+	}
+
+	reason := strings.ToLower(transaction.GetReason())
+	idempotencyKey := strings.ToLower(transaction.GetIdempotencyKey())
+	referenceID := strings.ToLower(transaction.GetReferenceId())
+
+	return strings.Contains(reason, "deposit") ||
+		strings.Contains(reason, "top") ||
+		strings.Contains(reason, "пополн") ||
+		strings.HasPrefix(idempotencyKey, "crypto-deposit:") ||
+		strings.Contains(referenceID, "crypto-deposit")
 }
 
 func cryptoTopUpTransactionAmount(transaction *balancedomain.LedgerTransaction) string {
@@ -275,4 +350,21 @@ func transactionTxHash(transaction *balancedomain.LedgerTransaction) string {
 	}
 
 	return referenceID
+}
+
+func parseRatAmount(value string) *big.Rat {
+	amount, ok := new(big.Rat).SetString(strings.TrimSpace(value))
+	if !ok {
+		return new(big.Rat)
+	}
+
+	return amount
+}
+
+func formatRatAmount(value *big.Rat, scale int) string {
+	if value == nil {
+		return "0"
+	}
+
+	return value.FloatString(scale)
 }
