@@ -50,4 +50,6 @@ func (b *Binder) bind(router fiber.Router) {
 	adminCatalog := router.Group("/admin/catalog", b.auth.Require(roles.Admin))
 	adminCatalog.Post("/categories", b.handler.CreateCategory)
 	adminCatalog.Delete("/categories/:category_id", b.handler.DeleteCategory)
+	adminCatalog.Get("/exchange-rates/usdt-trc20", b.handler.GetUSDTExchangeRate)
+	adminCatalog.Put("/exchange-rates/usdt-trc20", b.handler.UpdateUSDTExchangeRate)
 }

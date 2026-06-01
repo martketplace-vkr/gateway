@@ -191,14 +191,17 @@ func (h *Handler) CreateProduct(c *fiber.Ctx) error {
 	defer cancel()
 
 	resp, err := h.catalogVendorClient.CreateProduct(ctx, &catalogvendor.CreateProductRequest{
-		VendorId:        user.ID,
-		CategoryId:      req.CategoryID,
-		Name:            req.Name,
-		Description:     req.Description,
-		Price:           req.Price,
-		StockCount:      req.StockCount,
-		Characteristics: mapProductSections(req.Attributes),
-		Images:          mapProductImages(req.Images),
+		VendorId:          user.ID,
+		CategoryId:        req.CategoryID,
+		Name:              req.Name,
+		Description:       req.Description,
+		Price:             req.Price,
+		AcceptsCrypto:     req.AcceptsCrypto,
+		CryptoPricingMode: req.CryptoPricingMode,
+		CryptoPriceUsdt:   req.CryptoPriceUSDT,
+		StockCount:        req.StockCount,
+		Characteristics:   mapProductSections(req.Attributes),
+		Images:            mapProductImages(req.Images),
 	})
 	if err != nil {
 		return httpx.MapGRPCError(err)
@@ -229,15 +232,18 @@ func (h *Handler) UpdateProduct(c *fiber.Ctx) error {
 	defer cancel()
 
 	resp, err := h.catalogVendorClient.UpdateProduct(ctx, &catalogvendor.UpdateProductRequest{
-		ProductId:       productID,
-		VendorId:        user.ID,
-		CategoryId:      req.CategoryID,
-		Name:            req.Name,
-		Description:     req.Description,
-		Price:           req.Price,
-		StockCount:      req.StockCount,
-		Characteristics: mapProductSections(req.Attributes),
-		Images:          mapProductImages(req.Images),
+		ProductId:         productID,
+		VendorId:          user.ID,
+		CategoryId:        req.CategoryID,
+		Name:              req.Name,
+		Description:       req.Description,
+		Price:             req.Price,
+		AcceptsCrypto:     req.AcceptsCrypto,
+		CryptoPricingMode: req.CryptoPricingMode,
+		CryptoPriceUsdt:   req.CryptoPriceUSDT,
+		StockCount:        req.StockCount,
+		Characteristics:   mapProductSections(req.Attributes),
+		Images:            mapProductImages(req.Images),
 	})
 	if err != nil {
 		return httpx.MapGRPCError(err)
@@ -246,6 +252,37 @@ func (h *Handler) UpdateProduct(c *fiber.Ctx) error {
 	return c.JSON(models.GetProductResponse{
 		Product: mapProduct(resp.GetProduct()),
 	})
+}
+
+func (h *Handler) GetUSDTExchangeRate(c *fiber.Ctx) error {
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	resp, err := h.catalogAdminClient.GetUSDTExchangeRate(ctx, &catalogadmin.GetUSDTExchangeRateRequest{})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	return httpx.WriteProtoJSON(c, resp)
+}
+
+func (h *Handler) UpdateUSDTExchangeRate(c *fiber.Ctx) error {
+	req := models.UpdateUSDTExchangeRateRequest{}
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+
+	ctx, cancel := httpx.RPCContext(c, h.timeout)
+	defer cancel()
+
+	resp, err := h.catalogAdminClient.UpdateUSDTExchangeRate(ctx, &catalogadmin.UpdateUSDTExchangeRateRequest{
+		RubPerUsdt: strings.TrimSpace(req.RubPerUSDT),
+	})
+	if err != nil {
+		return httpx.MapGRPCError(err)
+	}
+
+	return httpx.WriteProtoJSON(c, resp)
 }
 
 func (h *Handler) GetVendorProducts(c *fiber.Ctx) error {
@@ -322,17 +359,22 @@ func mapProduct(product *catalogdomain.Product) *models.ProductResponse {
 	}
 
 	return &models.ProductResponse{
-		ID:          strconv.FormatInt(product.GetId(), 10),
-		VendorID:    strconv.FormatInt(product.GetVendorId(), 10),
-		CategoryID:  strconv.FormatInt(product.GetCategoryId(), 10),
-		Name:        product.GetName(),
-		Description: product.GetDescription(),
-		Price:       product.GetPrice(),
-		StockCount:  product.GetStockCount(),
-		Attributes:  mapProductAttributeSections(product.GetCharacteristics()),
-		Images:      mapProductImageResponses(product.GetImages()),
-		CreatedAt:   mapTimestamp(product.GetCreatedAt()),
-		UpdatedAt:   mapTimestamp(product.GetUpdatedAt()),
+		ID:                 strconv.FormatInt(product.GetId(), 10),
+		VendorID:           strconv.FormatInt(product.GetVendorId(), 10),
+		CategoryID:         strconv.FormatInt(product.GetCategoryId(), 10),
+		Name:               product.GetName(),
+		Description:        product.GetDescription(),
+		Price:              product.GetPrice(),
+		AcceptsCrypto:      product.GetAcceptsCrypto(),
+		CryptoPricingMode:  product.GetCryptoPricingMode(),
+		CryptoPriceUSDT:    product.GetCryptoPriceUsdt(),
+		EffectiveUSDTPrice: product.GetEffectiveUsdtPrice(),
+		RubPerUSDT:         product.GetRubPerUsdt(),
+		StockCount:         product.GetStockCount(),
+		Attributes:         mapProductAttributeSections(product.GetCharacteristics()),
+		Images:             mapProductImageResponses(product.GetImages()),
+		CreatedAt:          mapTimestamp(product.GetCreatedAt()),
+		UpdatedAt:          mapTimestamp(product.GetUpdatedAt()),
 	}
 }
 

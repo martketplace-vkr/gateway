@@ -5,6 +5,7 @@ type CheckoutRequest struct {
 	ProductIDs          []int64 `json:"product_ids"`
 	ExpectedCartVersion uint64  `json:"expected_cart_version"`
 	DeliveryAddressID   int64   `json:"delivery_address_id"`
+	PreferredCurrencyID int64   `json:"preferred_currency_id"`
 }
 
 type UpdateVendorOrderRequest struct {

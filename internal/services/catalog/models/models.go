@@ -32,17 +32,22 @@ type ProductImageResponse struct {
 }
 
 type ProductResponse struct {
-	ID          string                            `json:"id"`
-	VendorID    string                            `json:"vendor_id"`
-	CategoryID  string                            `json:"category_id"`
-	Name        string                            `json:"name"`
-	Description string                            `json:"description"`
-	Price       string                            `json:"price"`
-	StockCount  uint32                            `json:"stock_count"`
-	Attributes  []ProductAttributeSectionResponse `json:"attributes"`
-	Images      []ProductImageResponse            `json:"images"`
-	CreatedAt   string                            `json:"created_at,omitempty"`
-	UpdatedAt   string                            `json:"updated_at,omitempty"`
+	ID                 string                            `json:"id"`
+	VendorID           string                            `json:"vendor_id"`
+	CategoryID         string                            `json:"category_id"`
+	Name               string                            `json:"name"`
+	Description        string                            `json:"description"`
+	Price              string                            `json:"price"`
+	AcceptsCrypto      bool                              `json:"accepts_crypto"`
+	CryptoPricingMode  string                            `json:"crypto_pricing_mode"`
+	CryptoPriceUSDT    string                            `json:"crypto_price_usdt,omitempty"`
+	EffectiveUSDTPrice string                            `json:"effective_usdt_price,omitempty"`
+	RubPerUSDT         string                            `json:"rub_per_usdt,omitempty"`
+	StockCount         uint32                            `json:"stock_count"`
+	Attributes         []ProductAttributeSectionResponse `json:"attributes"`
+	Images             []ProductImageResponse            `json:"images"`
+	CreatedAt          string                            `json:"created_at,omitempty"`
+	UpdatedAt          string                            `json:"updated_at,omitempty"`
 }
 
 type ListProductsResponse struct {
@@ -55,14 +60,17 @@ type GetProductResponse struct {
 }
 
 type CreateProductRequest struct {
-	VendorID    int64                          `json:"vendor_id"`
-	CategoryID  int64                          `json:"category_id"`
-	Name        string                         `json:"name"`
-	Description string                         `json:"description"`
-	Price       string                         `json:"price"`
-	StockCount  uint32                         `json:"stock_count"`
-	Attributes  []ProductAttributeSectionInput `json:"attributes"`
-	Images      []ProductImageInput            `json:"images"`
+	VendorID          int64                          `json:"vendor_id"`
+	CategoryID        int64                          `json:"category_id"`
+	Name              string                         `json:"name"`
+	Description       string                         `json:"description"`
+	Price             string                         `json:"price"`
+	AcceptsCrypto     bool                           `json:"accepts_crypto"`
+	CryptoPricingMode string                         `json:"crypto_pricing_mode"`
+	CryptoPriceUSDT   string                         `json:"crypto_price_usdt"`
+	StockCount        uint32                         `json:"stock_count"`
+	Attributes        []ProductAttributeSectionInput `json:"attributes"`
+	Images            []ProductImageInput            `json:"images"`
 }
 
 type CreateCategoryRequest struct {
@@ -71,12 +79,19 @@ type CreateCategoryRequest struct {
 }
 
 type UpdateProductRequest struct {
-	VendorID    int64                          `json:"vendor_id"`
-	CategoryID  int64                          `json:"category_id"`
-	Name        string                         `json:"name"`
-	Description string                         `json:"description"`
-	Price       string                         `json:"price"`
-	StockCount  uint32                         `json:"stock_count"`
-	Attributes  []ProductAttributeSectionInput `json:"attributes"`
-	Images      []ProductImageInput            `json:"images"`
+	VendorID          int64                          `json:"vendor_id"`
+	CategoryID        int64                          `json:"category_id"`
+	Name              string                         `json:"name"`
+	Description       string                         `json:"description"`
+	Price             string                         `json:"price"`
+	AcceptsCrypto     bool                           `json:"accepts_crypto"`
+	CryptoPricingMode string                         `json:"crypto_pricing_mode"`
+	CryptoPriceUSDT   string                         `json:"crypto_price_usdt"`
+	StockCount        uint32                         `json:"stock_count"`
+	Attributes        []ProductAttributeSectionInput `json:"attributes"`
+	Images            []ProductImageInput            `json:"images"`
+}
+
+type UpdateUSDTExchangeRateRequest struct {
+	RubPerUSDT string `json:"rub_per_usdt"`
 }

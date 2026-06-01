@@ -91,6 +91,7 @@ func (h *Handler) Checkout(c *fiber.Ctx) error {
 		CheckoutId:          strings.TrimSpace(req.CheckoutID),
 		ProductIds:          req.ProductIDs,
 		ExpectedCartVersion: req.ExpectedCartVersion,
+		PreferredCurrencyId: req.PreferredCurrencyID,
 		Delivery: &orderdomain.Delivery{
 			Type:           2,
 			ClintAddressId: &req.DeliveryAddressID,
